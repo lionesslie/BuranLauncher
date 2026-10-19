@@ -1,0 +1,14 @@
+Bu klasördeki Inter-*.ttf dosyaları GEÇİCİ bir vekil (placeholder) olarak
+"Liberation Sans" fontundan türetilmiştir ve gerçek Inter fontu DEĞİLDİR.
+
+Kaynak: Liberation Fonts (https://github.com/liberationfonts)
+Lisans: SIL Open Font License 1.1 (https://scripts.sil.org/OFL)
+Telif: (c) 2010 Google Corporation (Reserved Font Arimo, Tinos, Cousine)
+       (c) 2012 Red Hat, Inc. (Reserved Font Name Liberation)
+
+SIL OFL 1.1, fontun yazılımla birlikte paketlenmesine, gömülmesine ve
+yeniden dağıtılmasına izin verir (fontun tek başına satılması hariç).
+
+Gerçek Inter fontunu (https://rsms.me/inter/, SIL OFL 1.1) edinip aynı
+dosya adlarıyla bu klasöre koyduğunuzda, bu geçici fontun yerini alır.
+Gerçek Inter fontunun kendi LICENSE.txt dosyasını da eklemeniz önerilir.

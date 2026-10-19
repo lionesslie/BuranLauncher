@@ -70,21 +70,58 @@ function decryptToken(encryptedBase64) {
  * Xbox Live -> XSTS -> Minecraft Services akışı, uygulama içi gömülü pencere ile.
  */
 async function loginWithMicrosoft(parentWindow) {
+  if (!process.env.MS_CLIENT_ID) {
+    throw new Error('MS_CLIENT_ID tanımlı değil. .env dosyasına Azure App Registration\'dan aldığınız Client ID\'yi ekleyin (bkz. .env.example).');
+  }
+
+  // NOT (doğrulama gerekli): msmc'nin launch() imzası sürümden sürüme değişebiliyor.
+  // Burada "electron" modu ile uygulama içi gömülü bir pencere açılması hedeflenir
+  // (harici tarayıcı YOK). `npm install` sonrası node_modules/msmc içindeki
+  // TypeScript tipleri veya resmi örnekle (https://github.com/Hanro50/msmc)
+  // birebir eşleştiğini doğrulayın; msmc genellikle BrowserWindow'u kendi içinde
+  // oluşturur ve ikinci parametre olarak pencere seçeneklerini kabul eder.
   const { Auth } = require('msmc');
   const authManager = new Auth('select_account');
 
-  // msmc'nin launch() metodu bir Electron BrowserWindow açar; biz bunu
-  // uygulama içi (harici tarayıcı olmadan) gömülü pencere olarak kullanıyoruz.
-  const xboxManager = await authManager.launch('electron', {
-    parent: parentWindow,
-    width: 480,
-    height: 650,
-    modal: true,
-    autoHideMenuBar: true,
-    title: 'Microsoft ile Giriş Yap'
-  });
+  // msmc kendi varsayılan Azure client_id'sini kullanabilir; eğer kendi
+  // Azure App Registration'ınızı kullanmak istiyorsanız msmc'nin ilgili
+  // API'siyle (sürüme göre `authManager.clientId = ...` ya da Auth
+  // constructor'ına üçüncü parametre olarak) MS_CLIENT_ID'yi iletmeniz
+  // gerekebilir; kesin yöntem için node_modules/msmc belgelerine bakın.
+  if ('clientId' in authManager) {
+    authManager.clientId = process.env.MS_CLIENT_ID;
+  }
+
+  let xboxManager;
+  try {
+    xboxManager = await authManager.launch('electron', {
+      parent: parentWindow,
+      width: 480,
+      height: 650,
+      modal: true,
+      autoHideMenuBar: true,
+      title: 'Microsoft ile Giriş Yap'
+    });
+  } catch (err) {
+    log.error('msmc launch() hatası', err);
+    throw new Error('Microsoft giriş penceresi açılamadı: ' + (err.message || err));
+  }
+
+  if (!xboxManager) {
+    throw new Error('Giriş iptal edildi veya pencere kapatıldı.');
+  }
+
+  // msmc bazı sürümlerde giriş iptal edilirse hata fırlatmak yerine
+  // xboxManager.error / xboxManager.reason gibi bir alan döndürebilir;
+  // bu yüzden devam etmeden önce ek bir kontrol yapılır.
+  if (xboxManager.error) {
+    throw new Error('Microsoft girişi başarısız: ' + (xboxManager.reason || xboxManager.error));
+  }
 
   const minecraftToken = await xboxManager.getMinecraft();
+  if (!minecraftToken || !minecraftToken.profile) {
+    throw new Error('Minecraft profili alınamadı. Hesabınızda Minecraft Java Edition lisansı olduğundan emin olun.');
+  }
   const profile = minecraftToken.profile;
 
   const accounts = store.get('accounts');
@@ -118,7 +155,9 @@ async function loginWithMicrosoft(parentWindow) {
 
 /**
  * Microsoft hesabı için minecraft-launcher-core'un ihtiyaç duyduğu auth
- * objesini şifrelenmiş depodan çözer. Gerekirse msmc üzerinden refresh eder.
+ * objesini şifrelenmiş depodan çözer. Erişim token'ı süresi dolmuşsa,
+ * saklanan refresh verisiyle msmc üzerinden sessizce (kullanıcıya pencere
+ * göstermeden) yenilemeyi dener; bu başarısız olursa yeniden giriş istenir.
  */
 async function getMclcAuthForAccount(account) {
   if (account.type === 'offline') {
@@ -135,6 +174,38 @@ async function getMclcAuthForAccount(account) {
   if (!account.encryptedToken) throw new Error('Microsoft hesabı için kayıtlı oturum bulunamadı, lütfen yeniden giriş yapın.');
   const tokenData = decryptToken(account.encryptedToken);
   if (!tokenData || !tokenData.mclc) throw new Error('Oturum bilgisi okunamadı, lütfen yeniden giriş yapın.');
+
+  // mclc auth objesinde genelde bir "meta.exp" ya da benzeri son kullanma
+  // bilgisi bulunmaz; bu yüzden erişim token'ının süresi dolup dolmadığını
+  // doğrudan bilemeyiz. Bunun yerine, saklanmış refresh verisi varsa her
+  // başlatmadan önce sessiz bir yenileme denemesi yapılır; başarısız olursa
+  // eski (muhtemelen hâlâ geçerli) token ile devam edilir, launch sırasında
+  // Mojang/Xbox tarafı reddederse kullanıcıya yeniden giriş hatası döner.
+  if (tokenData.refresh) {
+    try {
+      const { Auth } = require('msmc');
+      const authInstance = new Auth('select_account');
+      if (typeof authInstance.refresh === 'function') {
+        const refreshedXbox = await authInstance.refresh(tokenData.refresh);
+        const refreshedMc = await refreshedXbox.getMinecraft();
+        const newEncrypted = encryptToken({
+          mclc: refreshedMc.mclc(),
+          refresh: refreshedXbox.save ? refreshedXbox.save() : tokenData.refresh
+        });
+        const accounts = store.get('accounts');
+        const idx = accounts.findIndex(a => a.id === account.id);
+        if (idx >= 0) {
+          accounts[idx].encryptedToken = newEncrypted;
+          accounts[idx].updatedAt = Date.now();
+          store.set('accounts', accounts);
+        }
+        return refreshedMc.mclc();
+      }
+    } catch (err) {
+      log.warn('Microsoft token sessiz yenileme başarısız, mevcut token ile devam ediliyor', err.message);
+    }
+  }
+
   return tokenData.mclc;
 }
 

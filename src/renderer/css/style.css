@@ -1,16 +1,22 @@
+/* NOT: assets/fonts/ altındaki dosyalar şu an gerçek Inter DEĞİL, geçici olarak
+   Liberation Sans (SIL Open Font License, TR/RU karakterlerini tam destekler)
+   ile doldurulmuştur, böylece uygulama local font olmadan sistem fontuna
+   düşmüyor. Gerçek Inter .woff2 dosyalarını edinip aynı dosya adlarıyla
+   (Inter-Regular/Medium/SemiBold) bu klasöre koyduğunuzda otomatik devreye girer.
+   Bkz. assets/fonts/LICENSE.txt */
 @font-face {
   font-family: 'Inter';
-  src: url('../assets/fonts/Inter-Regular.woff2') format('woff2');
+  src: url('../assets/fonts/Inter-Regular.ttf') format('truetype');
   font-weight: 400;
 }
 @font-face {
   font-family: 'Inter';
-  src: url('../assets/fonts/Inter-Medium.woff2') format('woff2');
+  src: url('../assets/fonts/Inter-Medium.ttf') format('truetype');
   font-weight: 500;
 }
 @font-face {
   font-family: 'Inter';
-  src: url('../assets/fonts/Inter-SemiBold.woff2') format('woff2');
+  src: url('../assets/fonts/Inter-SemiBold.ttf') format('truetype');
   font-weight: 600;
 }
 
