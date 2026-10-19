@@ -18,7 +18,7 @@
     "electron-store": "^8.2.0",
     "electron-log": "^5.1.5",
     "minecraft-launcher-core": "^3.18.1",
-    "msmc": "lastes",
+    "msmc": "latest",
     "node-fetch": "^2.7.0",
     "extract-zip": "^2.0.1",
     "adm-zip": "^0.5.12",
