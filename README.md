@@ -17,4 +17,4 @@ npm run build         # ikisi birden
 ```
 Çıktılar `dist/` klasöründe oluşur.
 
-```bash
+```
