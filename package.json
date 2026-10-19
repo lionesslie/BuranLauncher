@@ -1,0 +1,67 @@
+{
+  "name": "buran-launcher",
+  "productName": "Buran Launcher",
+  "version": "1.0.0",
+  "description": "Buran Launcher - Minecraft başlatıcı",
+  "main": "src/main/main.js",
+  "author": "Buran Launcher",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build": "electron-builder --win --linux"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "electron-store": "^8.2.0",
+    "electron-log": "^5.1.5",
+    "minecraft-launcher-core": "^3.18.1",
+    "msmc": "^4.1.1",
+    "node-fetch": "^2.7.0",
+    "extract-zip": "^2.0.1",
+    "adm-zip": "^0.5.12",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.buranlauncher.app",
+    "productName": "Buran Launcher",
+    "copyright": "Buran Launcher",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "locales/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "assets/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Buran Launcher"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "icon": "assets/icons/icon.png",
+      "category": "Game"
+    }
+  }
+}

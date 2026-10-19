@@ -1,0 +1,148 @@
+{
+  "app": {
+    "name": "Buran Launcher"
+  },
+  "sidebar": {
+    "home": "Главная",
+    "profiles": "Мои профили",
+    "modstore": "Магазин модов",
+    "modpacks": "Сборки",
+    "accounts": "Аккаунты",
+    "settings": "Настройки"
+  },
+  "titlebar": {
+    "noAccount": "Аккаунт не выбран"
+  },
+  "home": {
+    "welcome": "Добро пожаловать",
+    "quickPlay": "Быстрый запуск",
+    "noInstances": "У вас пока нет профилей.",
+    "createFirst": "Создать первый профиль"
+  },
+  "profiles": {
+    "title": "Мои профили",
+    "newProfile": "Новый профиль",
+    "play": "Играть",
+    "edit": "Изменить",
+    "duplicate": "Дублировать",
+    "delete": "Удалить",
+    "export": "Экспорт",
+    "import": "Импорт",
+    "lastPlayed": "Последний запуск",
+    "never": "Ещё не запускался",
+    "totalPlaytime": "Общее время",
+    "deleteConfirm": "Вы уверены, что хотите удалить профиль \"{name}\"? Это действие необратимо.",
+    "nameLabel": "Название профиля",
+    "versionLabel": "Версия Minecraft",
+    "loaderLabel": "Загрузчик модов",
+    "loaderVersionLabel": "Версия загрузчика",
+    "iconLabel": "Иконка",
+    "create": "Создать",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "loaderNone": "Нет (Vanilla)",
+    "versionType": {
+      "release": "Релиз",
+      "snapshot": "Снапшот",
+      "old_beta": "Старая бета",
+      "old_alpha": "Старая альфа"
+    }
+  },
+  "modstore": {
+    "title": "Магазин модов",
+    "searchPlaceholder": "Поиск модов...",
+    "category": "Категория",
+    "sortBy": "Сортировка",
+    "sort": {
+      "relevance": "По релевантности",
+      "downloads": "По загрузкам",
+      "newest": "Сначала новые",
+      "updated": "По обновлению"
+    },
+    "selectInstanceFirst": "Сначала выберите профиль для установки мода",
+    "install": "Установить",
+    "installed": "Установлено",
+    "update": "Обновить",
+    "incompatible": "Несовместимо с этим профилем",
+    "dependencies": "Зависимости",
+    "downloads": "загрузок",
+    "noResults": "Ничего не найдено",
+    "installedTitle": "Установленные моды",
+    "checkUpdates": "Проверить обновления",
+    "upToDate": "Все моды актуальны",
+    "enable": "Включить",
+    "disable": "Отключить",
+    "remove": "Удалить",
+    "updateAvailable": "Доступно обновление: {version}"
+  },
+  "modpacks": {
+    "title": "Сборки",
+    "searchPlaceholder": "Поиск сборок...",
+    "install": "Установить",
+    "installing": "Установка...",
+    "step": {
+      "manifest": "Чтение манифеста",
+      "downloadingMods": "Загрузка модов {current}/{total}",
+      "creatingInstance": "Создание профиля",
+      "done": "Установка завершена"
+    }
+  },
+  "accounts": {
+    "title": "Аккаунты",
+    "addMicrosoft": "Войти через Microsoft",
+    "addOffline": "Добавить офлайн-профиль",
+    "offlineUsername": "Имя пользователя",
+    "setActive": "Сделать активным",
+    "remove": "Удалить",
+    "active": "Активен",
+    "typeOffline": "Офлайн",
+    "typeMicrosoft": "Microsoft"
+  },
+  "settings": {
+    "title": "Настройки",
+    "language": "Язык",
+    "ram": "Настройка памяти (RAM)",
+    "ramMin": "Минимум",
+    "ramMax": "Максимум",
+    "javaPath": "Путь к Java",
+    "javaAuto": "Определить автоматически",
+    "javaBrowse": "Обзор",
+    "javaDownload": "Скачать и установить Java",
+    "extraArgs": "Дополнительные аргументы игры",
+    "launchBehavior": "Launcher при запуске игры",
+    "launchBehaviorOptions": {
+      "keepOpen": "Оставить открытым",
+      "minimize": "Свернуть",
+      "close": "Закрыть"
+    },
+    "startOnBoot": "Запускать при старте системы",
+    "minimizeToTray": "Сворачивать в трей вместо закрытия"
+  },
+  "log": {
+    "title": "Журнал",
+    "clear": "Очистить"
+  },
+  "toast": {
+    "profileCreated": "Профиль создан",
+    "profileDeleted": "Профиль удалён",
+    "modInstalled": "Мод установлен",
+    "modRemoved": "Мод удалён",
+    "modUpdated": "Мод обновлён",
+    "loginSuccess": "Вход выполнен успешно",
+    "loginFailed": "Ошибка входа",
+    "launchStarted": "Запуск игры...",
+    "launchError": "Не удалось запустить игру: {error}",
+    "downloadError": "Ошибка загрузки: {error}",
+    "javaDownloaded": "Java успешно установлена",
+    "settingsSaved": "Настройки сохранены",
+    "genericError": "Произошла ошибка: {error}"
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "confirm": "Подтвердить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "yes": "Да",
+    "no": "Нет"
+  }
+}

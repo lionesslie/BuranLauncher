@@ -1,0 +1,148 @@
+{
+  "app": {
+    "name": "Buran Launcher"
+  },
+  "sidebar": {
+    "home": "Ana Sayfa",
+    "profiles": "Profillerim",
+    "modstore": "Mod Mağazası",
+    "modpacks": "Modpack'ler",
+    "accounts": "Hesaplar",
+    "settings": "Ayarlar"
+  },
+  "titlebar": {
+    "noAccount": "Hesap seçilmedi"
+  },
+  "home": {
+    "welcome": "Hoş geldin",
+    "quickPlay": "Hızlı Oyna",
+    "noInstances": "Henüz bir profil oluşturmadın.",
+    "createFirst": "İlk Profilini Oluştur"
+  },
+  "profiles": {
+    "title": "Profillerim",
+    "newProfile": "Yeni Profil",
+    "play": "Oynat",
+    "edit": "Düzenle",
+    "duplicate": "Kopyala",
+    "delete": "Sil",
+    "export": "Dışa Aktar",
+    "import": "İçe Aktar",
+    "lastPlayed": "Son oynama",
+    "never": "Hiç oynanmadı",
+    "totalPlaytime": "Toplam süre",
+    "deleteConfirm": "\"{name}\" profilini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+    "nameLabel": "Profil Adı",
+    "versionLabel": "Minecraft Sürümü",
+    "loaderLabel": "Mod Yükleyici",
+    "loaderVersionLabel": "Yükleyici Sürümü",
+    "iconLabel": "İkon",
+    "create": "Oluştur",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "loaderNone": "Yok (Vanilla)",
+    "versionType": {
+      "release": "Sürüm",
+      "snapshot": "Anlık Görüntü",
+      "old_beta": "Eski Beta",
+      "old_alpha": "Eski Alpha"
+    }
+  },
+  "modstore": {
+    "title": "Mod Mağazası",
+    "searchPlaceholder": "Mod ara...",
+    "category": "Kategori",
+    "sortBy": "Sırala",
+    "sort": {
+      "relevance": "İlgi Düzeyi",
+      "downloads": "İndirme Sayısı",
+      "newest": "En Yeni",
+      "updated": "Son Güncelleme"
+    },
+    "selectInstanceFirst": "Mod indirmek için önce bir profil seçin",
+    "install": "Yükle",
+    "installed": "Yüklü",
+    "update": "Güncelle",
+    "incompatible": "Bu profille uyumsuz",
+    "dependencies": "Bağımlılıklar",
+    "downloads": "indirme",
+    "noResults": "Sonuç bulunamadı",
+    "installedTitle": "Kurulu Modlar",
+    "checkUpdates": "Güncellemeleri Kontrol Et",
+    "upToDate": "Tüm modlar güncel",
+    "enable": "Etkinleştir",
+    "disable": "Devre Dışı Bırak",
+    "remove": "Kaldır",
+    "updateAvailable": "Güncelleme mevcut: {version}"
+  },
+  "modpacks": {
+    "title": "Modpack'ler",
+    "searchPlaceholder": "Modpack ara...",
+    "install": "Kur",
+    "installing": "Kuruluyor...",
+    "step": {
+      "manifest": "Manifest okunuyor",
+      "downloadingMods": "Modlar indiriliyor {current}/{total}",
+      "creatingInstance": "Instance oluşturuluyor",
+      "done": "Kurulum tamamlandı"
+    }
+  },
+  "accounts": {
+    "title": "Hesaplar",
+    "addMicrosoft": "Microsoft ile Giriş Yap",
+    "addOffline": "Çevrimdışı Profil Ekle",
+    "offlineUsername": "Kullanıcı Adı",
+    "setActive": "Aktif Yap",
+    "remove": "Kaldır",
+    "active": "Aktif",
+    "typeOffline": "Çevrimdışı",
+    "typeMicrosoft": "Microsoft"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "language": "Dil",
+    "ram": "Bellek (RAM) Ayarı",
+    "ramMin": "Minimum",
+    "ramMax": "Maksimum",
+    "javaPath": "Java Yolu",
+    "javaAuto": "Otomatik Tespit Et",
+    "javaBrowse": "Gözat",
+    "javaDownload": "Java İndir ve Kur",
+    "extraArgs": "Ek Oyun Argümanları",
+    "launchBehavior": "Oyun Başlarken Launcher",
+    "launchBehaviorOptions": {
+      "keepOpen": "Açık Kalsın",
+      "minimize": "Simge Durumuna Küçülsün",
+      "close": "Kapansın"
+    },
+    "startOnBoot": "Sistem başlangıcında aç",
+    "minimizeToTray": "Kapatma yerine sistem tepsisine küçült"
+  },
+  "log": {
+    "title": "Günlük",
+    "clear": "Temizle"
+  },
+  "toast": {
+    "profileCreated": "Profil oluşturuldu",
+    "profileDeleted": "Profil silindi",
+    "modInstalled": "Mod yüklendi",
+    "modRemoved": "Mod kaldırıldı",
+    "modUpdated": "Mod güncellendi",
+    "loginSuccess": "Giriş başarılı",
+    "loginFailed": "Giriş başarısız oldu",
+    "launchStarted": "Oyun başlatılıyor...",
+    "launchError": "Oyun başlatılamadı: {error}",
+    "downloadError": "İndirme hatası: {error}",
+    "javaDownloaded": "Java başarıyla kuruldu",
+    "settingsSaved": "Ayarlar kaydedildi",
+    "genericError": "Bir hata oluştu: {error}"
+  },
+  "common": {
+    "loading": "Yükleniyor...",
+    "confirm": "Onayla",
+    "cancel": "İptal",
+    "close": "Kapat",
+    "yes": "Evet",
+    "no": "Hayır"
+  }
+}
