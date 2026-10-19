@@ -16,3 +16,5 @@ npm run build:linux   # Linux: AppImage + .deb
 npm run build         # ikisi birden
 ```
 Çıktılar `dist/` klasöründe oluşur.
+
+```bash
