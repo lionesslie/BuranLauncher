@@ -36,13 +36,58 @@ function getJavaInstallDir(majorVersion) {
 
 /**
  * Minecraft sürümüne göre gereken Java major sürümünü belirler (yaklaşık kural).
+ * Not: Mojang'ın gerçek eşlemesi version.json içindeki "javaVersion.majorVersion"
+ * alanında tam olarak belirtilir; bu fonksiyon Java henüz indirilmemişken hızlı
+ * bir tahmin sağlar. 25, şu an resmi olarak gerekmese de ileriye dönük manuel
+ * seçenek olarak Ayarlar ekranında sunulur.
  */
 function requiredJavaVersionForMc(mcVersion) {
-  const [major, minor] = mcVersion.split('.').map(n => parseInt(n, 10));
+  const parts = mcVersion.split('.').map(n => parseInt(n, 10));
+  const major = parts[0] || 1;
+  const minor = parts[1] || 0;
+  if (major === 1 && minor >= 21) return 21;
   if (major === 1 && minor >= 20) return 21;
   if (major === 1 && minor >= 18) return 17;
   if (major === 1 && minor >= 17) return 16;
   return 8;
+}
+
+/**
+ * Daha önce otomatik indirilmiş bir Java major sürümü diskte var mı kontrol eder,
+ * varsa java çalıştırılabilir dosyasının yolunu döndürür (yeniden indirmez).
+ */
+function findCachedJava(majorVersion) {
+  const installDir = path.join(app.getPath('userData'), 'java', `jdk-${majorVersion}`);
+  if (!fs.existsSync(installDir)) return null;
+  const entries = fs.readdirSync(installDir).filter(f => {
+    try { return fs.statSync(path.join(installDir, f)).isDirectory(); } catch { return false; }
+  });
+  if (!entries.length) return null;
+  const { platform } = getPlatformInfo();
+  const javaBin = platform === 'windows'
+    ? path.join(installDir, entries[0], 'bin', 'java.exe')
+    : path.join(installDir, entries[0], 'bin', 'java');
+  return fs.existsSync(javaBin) ? javaBin : null;
+}
+
+/**
+ * Bir Minecraft sürümü için gereken Java'yı garanti eder: önce daha önce
+ * indirilmiş bir sürüm var mı bakar, yoksa Adoptium'dan otomatik indirir.
+ * Kullanıcının manuel ayarlardaki Java yolunu EZMEZ; sadece o ayar boşsa
+ * ya da sistemde hiç Java bulunamadığında devreye girer.
+ */
+async function ensureJavaForVersion(mcVersion, onProgress = () => {}) {
+  const required = requiredJavaVersionForMc(mcVersion);
+
+  const cached = findCachedJava(required);
+  if (cached) {
+    onProgress({ stage: 'cached', javaMajor: required });
+    return cached;
+  }
+
+  onProgress({ stage: 'autoDownloadStart', javaMajor: required });
+  const javaBin = await downloadAndInstallJava(required, (p) => onProgress({ ...p, javaMajor: required }));
+  return javaBin;
 }
 
 async function downloadAndInstallJava(javaMajorVersion, onProgress = () => {}) {
@@ -102,5 +147,7 @@ module.exports = {
   detectSystemJava,
   requiredJavaVersionForMc,
   downloadAndInstallJava,
+  findCachedJava,
+  ensureJavaForVersion,
   getPlatformInfo
 };

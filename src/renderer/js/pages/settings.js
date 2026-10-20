@@ -33,12 +33,16 @@ window.Pages.settings = {
 
       <div class="card" style="margin-bottom:16px;">
         <label>${t('settings.javaPath')}</label>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
           <input type="text" id="s-java-path" value="${escapeHtml(settings.javaPath || '')}" style="flex:1;" />
           <button class="btn secondary" id="s-java-auto">${t('settings.javaAuto')}</button>
           <button class="btn secondary" id="s-java-browse">${t('settings.javaBrowse')}</button>
-          <button class="btn secondary" id="s-java-download">${t('settings.javaDownload')}</button>
         </div>
+        <label>${t('settings.javaDownload')}</label>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          ${[8, 17, 21, 25].map(v => `<button class="btn secondary" data-java-dl="${v}">Java ${v}</button>`).join('')}
+        </div>
+        <p class="subtle" style="margin-top:8px;">${t('settings.javaAutoHint')}</p>
       </div>
 
       <div class="card" style="margin-bottom:16px;">
@@ -64,6 +68,17 @@ window.Pages.settings = {
         </label>
       </div>
 
+      <div class="card" style="margin-bottom:16px;">
+        <label>${t('settings.background')}</label>
+        <label style="display:flex; align-items:center; gap:8px; margin:8px 0;">
+          <input type="checkbox" id="s-bg-enabled" ${settings.backgroundEnabled ? 'checked' : ''} /> ${t('settings.backgroundEnabled')}
+        </label>
+        <div style="display:flex; gap:8px;">
+          <button class="btn secondary" id="s-bg-choose">${t('settings.backgroundChoose')}</button>
+          <button class="btn secondary" id="s-bg-reset">${t('settings.backgroundReset')}</button>
+        </div>
+      </div>
+
       <button class="btn" id="s-save">${t('profiles.save')}</button>
     `;
 
@@ -81,15 +96,39 @@ window.Pages.settings = {
       const p = await window.buran.java.browse();
       if (p) el.querySelector('#s-java-path').value = p;
     };
-    el.querySelector('#s-java-download').onclick = async () => {
+    el.querySelectorAll('[data-java-dl]').forEach(btn => {
+      btn.onclick = async () => {
+        const majorVersion = parseInt(btn.getAttribute('data-java-dl'), 10);
+        btn.disabled = true;
+        try {
+          showToast(t('common.loading'));
+          const javaPath = await window.buran.java.download(majorVersion);
+          el.querySelector('#s-java-path').value = javaPath;
+          showToast(t('toast.javaDownloaded'), 'success');
+        } catch (err) {
+          showToast(t('toast.genericError', { error: err.message }), 'error');
+        } finally {
+          btn.disabled = false;
+        }
+      };
+    });
+
+    el.querySelector('#s-bg-choose').onclick = async () => {
       try {
-        showToast(t('common.loading'));
-        const javaPath = await window.buran.java.download(21);
-        el.querySelector('#s-java-path').value = javaPath;
-        showToast(t('toast.javaDownloaded'), 'success');
+        const result = await window.buran.background.choose();
+        if (result) { await window.applyBackground(); showToast(t('toast.settingsSaved'), 'success'); }
       } catch (err) {
         showToast(t('toast.genericError', { error: err.message }), 'error');
       }
+    };
+    el.querySelector('#s-bg-reset').onclick = async () => {
+      await window.buran.background.reset();
+      await window.applyBackground();
+      showToast(t('toast.settingsSaved'), 'success');
+    };
+    el.querySelector('#s-bg-enabled').onchange = async (e) => {
+      await window.buran.settings.set({ backgroundEnabled: e.target.checked });
+      await window.applyBackground();
     };
 
     el.querySelector('#s-save').onclick = async () => {
@@ -100,7 +139,8 @@ window.Pages.settings = {
         extraArgs: el.querySelector('#s-extra-args').value,
         launchBehavior: el.querySelector('#s-launch-behavior').value,
         startOnBoot: el.querySelector('#s-start-boot').checked,
-        minimizeToTray: el.querySelector('#s-tray').checked
+        minimizeToTray: el.querySelector('#s-tray').checked,
+        backgroundEnabled: el.querySelector('#s-bg-enabled').checked
       };
       await window.buran.settings.set(patch);
       showToast(t('toast.settingsSaved'), 'success');

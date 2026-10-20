@@ -1,7 +1,5 @@
 window.Pages = window.Pages || {};
 
-const ICON_CHOICES = ['box', 'package', 'puzzle', 'layout-grid'];
-
 window.Pages.profiles = {
   async render() {
     const el = document.getElementById('page-profiles');
@@ -20,9 +18,6 @@ window.Pages.profiles = {
 
     const grid = el.querySelector('#profiles-grid');
     grid.innerHTML = instances.map(inst => this.cardHtml(inst)).join('') || `<p class="subtle">${t('home.noInstances')}</p>`;
-    renderStaticIcons();
-    grid.querySelectorAll('[data-icon]').forEach(e => e.innerHTML = icon(e.getAttribute('data-icon')));
-
     this.bindCardEvents(grid);
 
     el.querySelector('#profiles-new').onclick = () => this.openCreateModal();
@@ -39,7 +34,7 @@ window.Pages.profiles = {
     const hours = Math.floor((inst.totalPlaytimeMs || 0) / 3600000);
     return `
       <div class="card instance-card" data-id="${inst.id}">
-        <div class="instance-card-icon" data-icon="${inst.icon || 'box'}"></div>
+        <div class="instance-card-icon instance-card-icon-grass"></div>
         <div class="instance-card-name">${escapeHtml(inst.name)}</div>
         <div class="instance-card-meta">${inst.version} · ${inst.loader}${inst.loaderVersion ? ' ' + inst.loaderVersion : ''}</div>
         <div class="instance-card-meta">${t('profiles.lastPlayed')}: ${lastPlayed} · ${t('profiles.totalPlaytime')}: ${hours} sa</div>
@@ -120,12 +115,6 @@ window.Pages.profiles = {
         <input type="text" id="f-name" value="${instance ? escapeHtml(instance.name) : ''}" style="width:100%;" />
       </div>
       <div class="field">
-        <label>${t('profiles.iconLabel')}</label>
-        <div style="display:flex; gap:8px;">
-          ${ICON_CHOICES.map(ic => `<div class="instance-card-icon" data-icon-pick="${ic}" data-icon="${ic}" style="cursor:pointer; ${instance && instance.icon === ic ? 'outline:2px solid var(--accent);' : ''}"></div>`).join('')}
-        </div>
-      </div>
-      <div class="field">
         <label>${t('profiles.versionLabel')}</label>
         <div style="display:flex; gap:8px;">
           <select id="f-version-type" style="width:140px;">
@@ -161,17 +150,6 @@ window.Pages.profiles = {
   },
 
   bindForm(box, instance) {
-    let selectedIcon = instance ? instance.icon : ICON_CHOICES[0];
-
-    box.querySelectorAll('[data-icon-pick]').forEach(el => {
-      el.innerHTML = icon(el.getAttribute('data-icon'));
-      el.onclick = () => {
-        box.querySelectorAll('[data-icon-pick]').forEach(e => e.style.outline = '');
-        el.style.outline = '2px solid var(--accent)';
-        selectedIcon = el.getAttribute('data-icon-pick');
-      };
-    });
-
     const loaderSelect = box.querySelector('#f-loader');
     const loaderVersionField = box.querySelector('#loader-version-field');
     const loaderVersionSelect = box.querySelector('#f-loader-version');
@@ -228,7 +206,7 @@ window.Pages.profiles = {
       }
 
       try {
-        const payload = { name, icon: selectedIcon, version, versionType: versionTypeSelect.value, loader, loaderVersion };
+        const payload = { name, version, versionType: versionTypeSelect.value, loader, loaderVersion };
         let targetId;
         if (instance) {
           await window.buran.instances.update(instance.id, payload);

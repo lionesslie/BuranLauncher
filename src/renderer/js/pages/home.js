@@ -29,7 +29,7 @@ window.Pages.home = {
       <div class="grid">
         ${recent.map(inst => `
           <div class="card instance-card" data-id="${inst.id}">
-            <div class="instance-card-icon" data-icon="${inst.icon || 'box'}"></div>
+            <div class="instance-card-icon instance-card-icon-grass"></div>
             <div class="instance-card-name">${escapeHtml(inst.name)}</div>
             <div class="instance-card-meta">${inst.version} · ${inst.loader}</div>
             <div class="instance-card-actions">
@@ -39,8 +39,6 @@ window.Pages.home = {
         `).join('')}
       </div>
     `;
-    renderStaticIcons();
-    el.querySelectorAll('.instance-card-icon[data-icon]').forEach(e => e.innerHTML = icon(e.getAttribute('data-icon')));
     el.querySelectorAll('.play-btn').forEach(btn => {
       btn.onclick = () => window.Pages.profiles.playInstance(btn.getAttribute('data-id'));
     });

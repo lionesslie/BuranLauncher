@@ -117,6 +117,15 @@ async function installModToInstance(projectIdOrSlug, instanceId, { versionId = n
 
     onProgress({ stage: 'resolving', name: idOrSlug });
     const version = await resolveVersion(idOrSlug, verId);
+
+    // Aynı profilde bu mod zaten kuruluysa (meta-veride kayıtlıysa) tekrar indirip
+    // kurmuyoruz - gereksiz ağ trafiği ve dosya üzerine yazma engellenir.
+    const already = meta[version.project_id];
+    if (already && fs.existsSync(path.join(modsDir, already.filename))) {
+      log.info(`Zaten kurulu, atlanıyor: ${already.filename}`);
+      return;
+    }
+
     const primaryFile = version.files.find(f => f.primary) || version.files[0];
     if (!primaryFile) throw new Error('İndirilecek dosya bulunamadı: ' + idOrSlug);
 

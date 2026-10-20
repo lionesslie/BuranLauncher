@@ -24,11 +24,22 @@ async function launchInstance(instanceId, { onLog = () => {}, onStatus = () => {
   const mclcAuth = await authManager.getMclcAuthForAccount(fullAccount);
 
   const settings = store.get('settings');
-  let javaPath = settings.javaPath;
+  let javaPath = settings.javaPath; // kullanıcının manuel seçtiği yol varsa ona dokunulmaz
+
   if (!javaPath) {
     javaPath = javaManager.detectSystemJava();
-    if (!javaPath) {
-      throw new Error('Java bulunamadı. Ayarlar üzerinden Java yolunu belirtin veya otomatik Java indirmeyi kullanın.');
+  }
+
+  if (!javaPath) {
+    // Ne manuel ayar ne de sistemde Java var: bu Minecraft sürümü için gereken
+    // Java sürümü otomatik olarak tespit edilip indirilir (8/17/21/25 vb.).
+    onStatus({ task: 'java-auto-download', instanceVersion: instance.version });
+    try {
+      javaPath = await javaManager.ensureJavaForVersion(instance.version, (p) => {
+        onStatus({ task: 'java-auto-download', ...p });
+      });
+    } catch (err) {
+      throw new Error('Java otomatik indirilemedi: ' + err.message + ' — Ayarlar üzerinden manuel bir Java yolu belirtebilirsiniz.');
     }
   }
 

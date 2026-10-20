@@ -7,6 +7,7 @@
     "profiles": "Мои профили",
     "modstore": "Магазин модов",
     "modpacks": "Сборки",
+    "installedMods": "Установленные моды",
     "accounts": "Аккаунты",
     "settings": "Настройки"
   },
@@ -75,6 +76,9 @@
     "remove": "Удалить",
     "updateAvailable": "Доступно обновление: {version}"
   },
+  "installedMods": {
+    "title": "Установленные моды"
+  },
   "modpacks": {
     "title": "Сборки",
     "searchPlaceholder": "Поиск сборок...",
@@ -108,6 +112,11 @@
     "javaAuto": "Определить автоматически",
     "javaBrowse": "Обзор",
     "javaDownload": "Скачать и установить Java",
+    "javaAutoHint": "Если при запуске игры нужной версии Java нет, launcher скачает подходящую версию автоматически. Здесь также можно скачать её заранее вручную.",
+    "background": "Фон",
+    "backgroundEnabled": "Показывать фоновое изображение",
+    "backgroundChoose": "Изменить фон",
+    "backgroundReset": "Сбросить по умолчанию",
     "extraArgs": "Дополнительные аргументы игры",
     "launchBehavior": "Launcher при запуске игры",
     "launchBehaviorOptions": {

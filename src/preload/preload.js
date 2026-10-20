@@ -76,6 +76,11 @@ contextBridge.exposeInMainWorld('buran', {
     get: () => invoke('settings:get'),
     set: (patch) => invoke('settings:set', patch)
   },
+  background: {
+    get: () => invoke('background:get'),
+    choose: () => invoke('background:choose'),
+    reset: () => invoke('background:reset')
+  },
   window: {
     minimize: () => invoke('window:minimize'),
     maximize: () => invoke('window:maximize'),

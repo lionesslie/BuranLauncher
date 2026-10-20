@@ -12,7 +12,9 @@ const store = new Store({
       extraArgs: '',
       launchBehavior: 'minimize', // keepOpen | minimize | close
       startOnBoot: false,
-      minimizeToTray: true
+      minimizeToTray: true,
+      backgroundEnabled: true,
+      backgroundPath: null // null => assets/backgrounds/default.jpg (paket içi); doluysa userData/backgrounds/ altındaki özel dosya
     },
     accounts: [], // {id, type: 'offline'|'microsoft', username, uuid, encryptedToken?}
     activeAccountId: null,

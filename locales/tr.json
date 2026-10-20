@@ -7,6 +7,7 @@
     "profiles": "Profillerim",
     "modstore": "Mod Mağazası",
     "modpacks": "Modpack'ler",
+    "installedMods": "Yüklü Modlar",
     "accounts": "Hesaplar",
     "settings": "Ayarlar"
   },
@@ -75,6 +76,9 @@
     "remove": "Kaldır",
     "updateAvailable": "Güncelleme mevcut: {version}"
   },
+  "installedMods": {
+    "title": "Yüklü Modlar"
+  },
   "modpacks": {
     "title": "Modpack'ler",
     "searchPlaceholder": "Modpack ara...",
@@ -108,6 +112,11 @@
     "javaAuto": "Otomatik Tespit Et",
     "javaBrowse": "Gözat",
     "javaDownload": "Java İndir ve Kur",
+    "javaAutoHint": "Oyunu başlatırken gereken Java sürümü eksikse, launcher otomatik olarak uygun sürümü indirir. Buradan manuel olarak da önceden indirebilirsiniz.",
+    "background": "Arkaplan",
+    "backgroundEnabled": "Arkaplan görselini göster",
+    "backgroundChoose": "Arkaplanı Değiştir",
+    "backgroundReset": "Varsayılana Döndür",
     "extraArgs": "Ek Oyun Argümanları",
     "launchBehavior": "Oyun Başlarken Launcher",
     "launchBehaviorOptions": {

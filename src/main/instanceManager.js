@@ -44,7 +44,9 @@ function createInstance({ name, icon, version, versionType, loader, loaderVersio
   const instance = {
     id: uuidv4(),
     name: name.trim(),
-    icon: icon || 'box',
+    // Profiller için şu an tek sabit ikon kullanılıyor (Minecraft çim bloğu).
+    // Alan ileride çoklu ikon desteği eklenirse diye korunuyor.
+    icon: 'grass',
     version,
     versionType: versionType || 'release',
     loader: loader || 'vanilla', // vanilla | forge | fabric | quilt | neoforge

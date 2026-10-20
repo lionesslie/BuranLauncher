@@ -1,6 +1,9 @@
 window.Pages = window.Pages || {};
 
 window.Pages.modpacks = {
+  _scrollHandler: null,
+  _searchState: null,
+
   async render() {
     const el = document.getElementById('page-modpacks');
     el.innerHTML = `
@@ -13,23 +16,24 @@ window.Pages.modpacks = {
         <div id="mp-progress-text" class="subtle" style="margin-bottom:8px;"></div>
         <div class="progress-bar"><div class="progress-bar-fill" id="mp-progress-fill" style="width:0%;"></div></div>
       </div>
-      <div id="mp-results"></div>
+      <div class="grid" id="mp-results"></div>
+      <p class="subtle" id="mp-loading-more" style="text-align:center; padding:12px; display:none;">${t('common.loading')}</p>
     `;
 
     const queryInput = el.querySelector('#mp-query');
-    const results = el.querySelector('#mp-results');
-
-    const doSearch = debounce(async () => {
-      results.innerHTML = `<p class="subtle">${t('common.loading')}</p>`;
-      try {
-        const data = await window.buran.modrinth.searchModpacks({ query: queryInput.value });
-        this.renderResults(results, data.hits || []);
-      } catch (err) {
-        results.innerHTML = `<p class="subtle">${t('toast.genericError', { error: err.message })}</p>`;
-      }
-    }, 350);
+    const doSearch = debounce(() => this.freshSearch(), 350);
     queryInput.oninput = doSearch;
-    doSearch();
+
+    const contentEl = document.querySelector('.content');
+    if (this._scrollHandler) contentEl.removeEventListener('scroll', this._scrollHandler);
+    this._scrollHandler = debounce(() => {
+      if (!document.getElementById('page-modpacks').classList.contains('active')) return;
+      const nearBottom = contentEl.scrollTop + contentEl.clientHeight >= contentEl.scrollHeight - 300;
+      if (nearBottom) this.loadMore();
+    }, 150);
+    contentEl.addEventListener('scroll', this._scrollHandler);
+
+    this.freshSearch();
 
     el.querySelector('#mp-install-file').onclick = async () => {
       const progressCard = el.querySelector('#mp-progress');
@@ -59,17 +63,64 @@ window.Pages.modpacks = {
     };
   },
 
-  renderResults(container, hits) {
-    if (!hits.length) {
+  async freshSearch() {
+    const el = document.getElementById('page-modpacks');
+    const query = el.querySelector('#mp-query').value;
+    const results = el.querySelector('#mp-results');
+
+    this._searchState = { query, offset: 0, limit: 20, hasMore: true, loading: false };
+
+    results.innerHTML = `<p class="subtle">${t('common.loading')}</p>`;
+    try {
+      const data = await window.buran.modrinth.searchModpacks({ query, offset: 0, limit: this._searchState.limit });
+      results.innerHTML = '';
+      this.appendResults(results, data.hits || []);
+      this._searchState.offset = (data.hits || []).length;
+      this._searchState.hasMore = (data.hits || []).length >= this._searchState.limit;
+    } catch (err) {
+      results.innerHTML = `<p class="subtle">${t('toast.genericError', { error: err.message })}</p>`;
+      this._searchState.hasMore = false;
+    }
+  },
+
+  async loadMore() {
+    const state = this._searchState;
+    if (!state || state.loading || !state.hasMore) return;
+    state.loading = true;
+    document.getElementById('mp-loading-more').style.display = 'block';
+    try {
+      const data = await window.buran.modrinth.searchModpacks({ query: state.query, offset: state.offset, limit: state.limit });
+      const results = document.getElementById('mp-results');
+      this.appendResults(results, data.hits || []);
+      state.offset += (data.hits || []).length;
+      state.hasMore = (data.hits || []).length >= state.limit;
+    } catch (err) {
+      state.hasMore = false;
+    } finally {
+      state.loading = false;
+      document.getElementById('mp-loading-more').style.display = 'none';
+    }
+  },
+
+  appendResults(container, hits) {
+    if (!hits.length && !container.children.length) {
       container.innerHTML = `<p class="subtle">${t('modstore.noResults')}</p>`;
       return;
     }
-    container.innerHTML = `<div class="grid">${hits.map(h => `
+    const frag = document.createElement('div');
+    frag.innerHTML = hits.map(h => `
       <div class="card">
+        <img class="mod-card-icon" src="${h.icon_url || ''}" onerror="this.style.display='none'" />
         <div class="instance-card-name">${escapeHtml(h.title)}</div>
         <div class="instance-card-meta">${(h.downloads || 0).toLocaleString()} ${t('modstore.downloads')}</div>
         <div class="mod-row-desc" style="white-space:normal; margin:8px 0;">${escapeHtml(h.description || '')}</div>
       </div>
-    `).join('')}</div>`;
+    `).join('');
+    while (frag.firstChild) container.appendChild(frag.firstChild);
   }
 };
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}

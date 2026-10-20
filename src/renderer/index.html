@@ -8,6 +8,9 @@
 </head>
 <body>
 
+  <!-- Arkaplan katmanı: Ayarlar'dan değiştirilebilir/kapatılabilir -->
+  <div id="bg-layer"></div>
+
   <!-- Özel Title Bar -->
   <div class="titlebar">
     <div class="titlebar-account" id="titlebar-account">
@@ -31,6 +34,7 @@
         <li data-page="profiles"><span class="icon" data-icon="layout-grid"></span><span class="label" data-i18n="sidebar.profiles"></span></li>
         <li data-page="modstore"><span class="icon" data-icon="puzzle"></span><span class="label" data-i18n="sidebar.modstore"></span></li>
         <li data-page="modpacks"><span class="icon" data-icon="package"></span><span class="label" data-i18n="sidebar.modpacks"></span></li>
+        <li data-page="installedmods"><span class="icon" data-icon="list"></span><span class="label" data-i18n="sidebar.installedMods"></span></li>
         <li data-page="accounts"><span class="icon" data-icon="users"></span><span class="label" data-i18n="sidebar.accounts"></span></li>
         <li data-page="settings"><span class="icon" data-icon="settings"></span><span class="label" data-i18n="sidebar.settings"></span></li>
       </ul>
@@ -42,6 +46,7 @@
       <section id="page-profiles" class="page"></section>
       <section id="page-modstore" class="page"></section>
       <section id="page-modpacks" class="page"></section>
+      <section id="page-installedmods" class="page"></section>
       <section id="page-accounts" class="page"></section>
       <section id="page-settings" class="page"></section>
     </main>
@@ -74,6 +79,7 @@
   <script src="js/pages/profiles.js"></script>
   <script src="js/pages/modstore.js"></script>
   <script src="js/pages/modpacks.js"></script>
+  <script src="js/pages/installedmods.js"></script>
   <script src="js/pages/accounts.js"></script>
   <script src="js/pages/settings.js"></script>
   <script src="js/app.js"></script>

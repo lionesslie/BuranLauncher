@@ -13,6 +13,7 @@ const modrinthManager = require('./modrinthManager');
 const loaderManager = require('./loaderManager');
 const javaManager = require('./javaManager');
 const launchManager = require('./launchManager');
+const backgroundManager = require('./backgroundManager');
 
 function wrap(handler) {
   return async (event, ...args) => {
@@ -163,6 +164,18 @@ function registerIpcHandlers(mainWindow) {
     app.setLoginItemSettings({ openAtLogin: !!updated.startOnBoot });
     return updated;
   }));
+
+  // --- Arkaplan ---
+  ipcMain.handle('background:get', wrap(() => backgroundManager.getBackgroundState()));
+  ipcMain.handle('background:choose', wrap(async () => {
+    const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
+      filters: [{ name: 'Görseller', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+      properties: ['openFile']
+    });
+    if (canceled || !filePaths.length) return null;
+    return backgroundManager.setCustomBackground(filePaths[0]);
+  }));
+  ipcMain.handle('background:reset', wrap(() => backgroundManager.resetBackground()));
 
   // --- Pencere kontrolleri ---
   ipcMain.handle('window:minimize', wrap(() => mainWindow.minimize()));

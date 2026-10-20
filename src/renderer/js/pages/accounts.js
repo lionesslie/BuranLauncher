@@ -20,7 +20,7 @@ window.Pages.accounts = {
     const list = el.querySelector('#acc-list');
     list.innerHTML = accounts.map(a => `
       <div class="mod-row">
-        <div class="account-avatar" style="width:36px;height:36px;"></div>
+        <img class="account-avatar" style="width:36px;height:36px;" src="${window.accountAvatarUrl(a)}" onerror="this.style.visibility='hidden'" />
         <div class="mod-row-info">
           <div class="mod-row-title">${escapeHtml(a.username)}</div>
           <div class="mod-row-desc">${a.type === 'microsoft' ? t('accounts.typeMicrosoft') : t('accounts.typeOffline')}</div>
