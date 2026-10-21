@@ -18,8 +18,8 @@ let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 760,
+    width: 1280,
+    height: 755,
     minWidth: 960,
     minHeight: 600,
     frame: false, // custom title bar kullanılacak
@@ -29,8 +29,21 @@ function createWindow() {
       preload: path.join(__dirname, '..', 'preload', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
-    }
+      sandbox: false,
+      // Performans: spellcheck motoru arka planda sözlük yükleyip metin
+      // alanlarını sürekli denetleyerek gereksiz CPU/RAM harcar; bu launcher
+      // için gerekli değil.
+      spellcheck: false,
+      // Pencere arka plana alındığında/simge durumuna küçültüldüğünde
+      // renderer'ın zamanlayıcılarının kısılmasını garanti eder (varsayılan
+      // zaten true'dur, açıkça belirtildi).
+      backgroundThrottling: true
+    },
+    show: false // ilk boyama bitene kadar beyaz/boş pencere göstermemek için
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));

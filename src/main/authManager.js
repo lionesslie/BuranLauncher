@@ -70,25 +70,16 @@ function decryptToken(encryptedBase64) {
  * Xbox Live -> XSTS -> Minecraft Services akışı, uygulama içi gömülü pencere ile.
  */
 async function loginWithMicrosoft(parentWindow) {
-  if (!process.env.MS_CLIENT_ID) {
-    throw new Error('MS_CLIENT_ID tanımlı değil. .env dosyasına Azure App Registration\'dan aldığınız Client ID\'yi ekleyin (bkz. .env.example).');
-  }
-
-  // NOT (doğrulama gerekli): msmc'nin launch() imzası sürümden sürüme değişebiliyor.
-  // Burada "electron" modu ile uygulama içi gömülü bir pencere açılması hedeflenir
-  // (harici tarayıcı YOK). `npm install` sonrası node_modules/msmc içindeki
-  // TypeScript tipleri veya resmi örnekle (https://github.com/Hanro50/msmc)
-  // birebir eşleştiğini doğrulayın; msmc genellikle BrowserWindow'u kendi içinde
-  // oluşturur ve ikinci parametre olarak pencere seçeneklerini kabul eder.
+  // ÖNEMLİ DÜZELTME: msmc kendi varsayılan/paylaşılan Azure client_id'si ile
+  // ÇALIŞIR — kendi Azure App Registration'ınızı sağlamanız ZORUNLU DEĞİL.
+  // Önceki sürümde burada MS_CLIENT_ID yoksa hata fırlatılıyordu; bu da
+  // .env dosyası boşken (varsayılan durum) hiçbir pencere açılmadan "giriş
+  // başarısız" hatasına yol açıyordu. Artık MS_CLIENT_ID TAMAMEN OPSİYONEL:
+  // sadece tanımlıysa kullanılır, yoksa msmc'nin kendi varsayılanına düşülür.
   const { Auth } = require('msmc');
   const authManager = new Auth('select_account');
 
-  // msmc kendi varsayılan Azure client_id'sini kullanabilir; eğer kendi
-  // Azure App Registration'ınızı kullanmak istiyorsanız msmc'nin ilgili
-  // API'siyle (sürüme göre `authManager.clientId = ...` ya da Auth
-  // constructor'ına üçüncü parametre olarak) MS_CLIENT_ID'yi iletmeniz
-  // gerekebilir; kesin yöntem için node_modules/msmc belgelerine bakın.
-  if ('clientId' in authManager) {
+  if (process.env.MS_CLIENT_ID && process.env.MS_CLIENT_ID !== 'BURAYA_AZURE_CLIENT_ID_YAZIN') {
     authManager.clientId = process.env.MS_CLIENT_ID;
   }
 

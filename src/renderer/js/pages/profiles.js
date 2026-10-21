@@ -32,6 +32,7 @@ window.Pages.profiles = {
   cardHtml(inst) {
     const lastPlayed = inst.lastPlayed ? new Date(inst.lastPlayed).toLocaleDateString() : t('profiles.never');
     const hours = Math.floor((inst.totalPlaytimeMs || 0) / 3600000);
+    const isRunning = window.runningInstances && window.runningInstances.has(inst.id);
     return `
       <div class="card instance-card" data-id="${inst.id}">
         <div class="instance-card-icon instance-card-icon-grass"></div>
@@ -39,11 +40,13 @@ window.Pages.profiles = {
         <div class="instance-card-meta">${inst.version} · ${inst.loader}${inst.loaderVersion ? ' ' + inst.loaderVersion : ''}</div>
         <div class="instance-card-meta">${t('profiles.lastPlayed')}: ${lastPlayed} · ${t('profiles.totalPlaytime')}: ${hours} sa</div>
         <div class="instance-card-actions">
-          <button class="btn" data-action="play" data-id="${inst.id}">${t('profiles.play')}</button>
-          <button class="btn secondary" data-action="edit" data-id="${inst.id}">${t('profiles.edit')}</button>
+          ${isRunning
+            ? `<button class="btn danger" data-action="stop" data-id="${inst.id}">${t('profiles.stop')}</button>`
+            : `<button class="btn" data-action="play" data-id="${inst.id}">${t('profiles.play')}</button>`}
+          <button class="btn secondary" data-action="edit" data-id="${inst.id}" ${isRunning ? 'disabled' : ''}>${t('profiles.edit')}</button>
           <button class="btn secondary" data-action="duplicate" data-id="${inst.id}">${t('profiles.duplicate')}</button>
           <button class="btn secondary" data-action="export" data-id="${inst.id}">${t('profiles.export')}</button>
-          <button class="btn danger" data-action="delete" data-id="${inst.id}">${t('profiles.delete')}</button>
+          <button class="btn danger" data-action="delete" data-id="${inst.id}" ${isRunning ? 'disabled' : ''}>${t('profiles.delete')}</button>
         </div>
       </div>
     `;
@@ -56,6 +59,7 @@ window.Pages.profiles = {
       btn.onclick = async () => {
         try {
           if (action === 'play') return this.playInstance(id);
+          if (action === 'stop') return this.stopInstance(id);
           if (action === 'edit') return this.openEditModal(id);
           if (action === 'duplicate') {
             await window.buran.instances.duplicate(id);
@@ -85,9 +89,24 @@ window.Pages.profiles = {
     try {
       showToast(t('toast.launchStarted'));
       document.getElementById('log-panel').classList.add('open');
+      window.runningInstances.add(id);
+      this.render(); // "Oyna" düğmesini hemen "Durdur"a çevir
       await window.buran.launch.start(id);
     } catch (err) {
+      window.runningInstances.delete(id);
       showToast(t('toast.launchError', { error: err.message }), 'error');
+      this.render();
+    }
+  },
+
+  async stopInstance(id) {
+    try {
+      await window.buran.launch.kill(id);
+      window.runningInstances.delete(id);
+      showToast(t('toast.gameStopped'), 'success');
+      this.render();
+    } catch (err) {
+      showToast(t('toast.genericError', { error: err.message }), 'error');
     }
   },
 

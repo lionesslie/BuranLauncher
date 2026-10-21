@@ -1,6 +1,10 @@
 // Uygulama giriş noktası: sayfa yönlendirme, title bar, genel kurulum
 const PAGES = ['home', 'profiles', 'modstore', 'modpacks', 'installedmods', 'accounts', 'settings'];
 
+// Şu an çalışan instance'ların kimliklerini tutar; "Oyna" <-> "Durdur"
+// düğme durumunu belirlemek için home.js ve profiles.js tarafından okunur.
+window.runningInstances = new Set();
+
 function switchPage(name) {
   document.querySelectorAll('.sidebar-nav li').forEach(li => {
     li.classList.toggle('active', li.getAttribute('data-page') === name);
@@ -30,11 +34,15 @@ window.updateTitlebarAccount = async function () {
   }
 };
 
-// Hesabın 2D kafa görselini Crafatar üzerinden getirir (Microsoft hesapları
-// için gerçek skin, offline hesaplar için UUID'ye göre varsayılan Steve/Alex).
+// Hesabın 2D kafa görselini kullanıcı adına göre getirir (minotar.net).
+// NOT: Önceden UUID tabanlı Crafatar kullanılıyordu, ancak Microsoft
+// hesaplarında gerçek skin yerine bazen varsayılan Alex görseli dönüyordu.
+// Kullanıcı adı bazlı sorgu (Mojang API'den anlık skin çözümlemesi yapar)
+// bu sorunu ortadan kaldırır; offline hesaplarda da kullanıcı adına göre
+// tutarlı bir varsayılan (Steve/Alex) gösterir.
 function accountAvatarUrl(account) {
-  const uuid = (account.uuid || '').replace(/-/g, '');
-  return `https://crafatar.com/avatars/${uuid}?size=32&overlay`;
+  const username = encodeURIComponent(account.username || 'Steve');
+  return `https://minotar.net/helm/${username}/32.png`;
 }
 window.accountAvatarUrl = accountAvatarUrl;
 
@@ -67,6 +75,16 @@ async function bootstrap() {
   document.getElementById('btn-minimize').onclick = () => window.buran.window.minimize();
   document.getElementById('btn-maximize').onclick = () => window.buran.window.maximize();
   document.getElementById('btn-close').onclick = () => window.buran.window.close();
+
+  // Oyun kapandığında (ister launcher'dan "Durdur" ile, ister oyuncu kendi
+  // kapatsın) ilgili instance'ı çalışanlar listesinden çıkarıp aktif sayfayı
+  // tazeler, böylece "Durdur" düğmesi otomatik olarak "Oyna"ya döner.
+  window.buran.launch.onClosed(({ instanceId }) => {
+    window.runningInstances.delete(instanceId);
+    const activeLi = document.querySelector('.sidebar-nav li.active');
+    const current = activeLi ? activeLi.getAttribute('data-page') : 'home';
+    if (current === 'home' || current === 'profiles') switchPage(current);
+  });
 
   await updateTitlebarAccount();
   await applyBackground();

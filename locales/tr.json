@@ -16,7 +16,7 @@
   },
   "home": {
     "welcome": "Hoş geldin",
-    "quickPlay": "Hızlı Oyna",
+    "quickPlay": "Oyna",
     "noInstances": "Henüz bir profil oluşturmadın.",
     "createFirst": "İlk Profilini Oluştur"
   },
@@ -24,6 +24,7 @@
     "title": "Profillerim",
     "newProfile": "Yeni Profil",
     "play": "Oynat",
+    "stop": "Durdur",
     "edit": "Düzenle",
     "duplicate": "Kopyala",
     "delete": "Sil",
@@ -140,6 +141,7 @@
     "loginSuccess": "Giriş başarılı",
     "loginFailed": "Giriş başarısız oldu",
     "launchStarted": "Oyun başlatılıyor...",
+    "gameStopped": "Oyun durduruldu",
     "launchError": "Oyun başlatılamadı: {error}",
     "downloadError": "İndirme hatası: {error}",
     "javaDownloaded": "Java başarıyla kuruldu",

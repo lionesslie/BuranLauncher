@@ -54,7 +54,9 @@ window.Pages.accounts = {
         this.render();
         window.updateTitlebarAccount();
       } catch (err) {
-        showToast(t('toast.loginFailed'), 'error');
+        // Asıl hata mesajı gösterilir (önceden jenerik mesaj hatayı gizliyordu)
+        showToast(`${t('toast.loginFailed')}: ${err.message}`, 'error', 7000);
+        appendLog(`[hata] Microsoft girişi: ${err.message}`);
       }
     };
 

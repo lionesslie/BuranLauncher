@@ -16,7 +16,7 @@
   },
   "home": {
     "welcome": "Добро пожаловать",
-    "quickPlay": "Быстрый запуск",
+    "quickPlay": "Играть",
     "noInstances": "У вас пока нет профилей.",
     "createFirst": "Создать первый профиль"
   },
@@ -24,6 +24,7 @@
     "title": "Мои профили",
     "newProfile": "Новый профиль",
     "play": "Играть",
+    "stop": "Остановить",
     "edit": "Изменить",
     "duplicate": "Дублировать",
     "delete": "Удалить",
@@ -140,6 +141,7 @@
     "loginSuccess": "Вход выполнен успешно",
     "loginFailed": "Ошибка входа",
     "launchStarted": "Запуск игры...",
+    "gameStopped": "Игра остановлена",
     "launchError": "Не удалось запустить игру: {error}",
     "downloadError": "Ошибка загрузки: {error}",
     "javaDownloaded": "Java успешно установлена",

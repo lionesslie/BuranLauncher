@@ -6,17 +6,17 @@
    Bkz. assets/fonts/LICENSE.txt */
 @font-face {
   font-family: 'Inter';
-  src: url('../assets/fonts/Inter-Regular.ttf') format('truetype');
+  src: url('../../../assets/fonts/Inter-Regular.ttf') format('truetype');
   font-weight: 400;
 }
 @font-face {
   font-family: 'Inter';
-  src: url('../assets/fonts/Inter-Medium.ttf') format('truetype');
+  src: url('../../../assets/fonts/Inter-Medium.ttf') format('truetype');
   font-weight: 500;
 }
 @font-face {
   font-family: 'Inter';
-  src: url('../assets/fonts/Inter-SemiBold.ttf') format('truetype');
+  src: url('../../../assets/fonts/Inter-SemiBold.ttf') format('truetype');
   font-weight: 600;
 }
 
@@ -28,8 +28,8 @@
   --text-hi: #f2f3f5;
   --text-mid: #b6bac3;
   --text-low: #7b8191;
-  --accent: #7c5cff;
-  --accent-hover: #8e71ff;
+  --accent: #5bab3e;
+  --accent-hover: #6cc24a;
   --danger: #ef4444;
   --success: #10b981;
   --radius: 10px;
@@ -67,29 +67,29 @@ html, body {
   background: linear-gradient(180deg, rgba(17,19,24,0.55) 0%, rgba(17,19,24,0.75) 60%, rgba(17,19,24,0.92) 100%);
 }
 #bg-layer.bg-off { background-image: none !important; }
+/* Performans notu: önceki sürüm "background-position" animasyonu (bgFlow)
+   kullanıyordu; bu özellik her karede tüm katmanın yeniden BOYANMASINI
+   (paint, sadece composite değil) gerektirdiği için sürekli etkinken
+   belirgin CPU/GPU yükü yaratıyordu. Artık arka plan sabit (statik gradyan)
+   ve sadece "transform" + "opacity" (GPU'da ucuz, sadece composite
+   gerektiren özellikler) ile yumuşak bir nefes alma efekti veriliyor. */
 #bg-layer.bg-animated {
   background-image: none !important;
-  background: linear-gradient(-45deg, #111318, #1a1030, #0f1a2e, #201035, #111318);
-  background-size: 400% 400%;
-  animation: bgFlow 22s ease infinite;
+  background: linear-gradient(135deg, #111318, #16261a, #0f1a16, #111318);
 }
 #bg-layer.bg-animated::after { background: none; }
 #bg-layer.bg-animated::before {
   content: "";
-  position: absolute; inset: 0;
+  position: absolute; inset: -10%;
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(124,92,255,0.18), transparent 40%),
+    radial-gradient(circle at 20% 30%, rgba(91,171,62,0.20), transparent 40%),
     radial-gradient(circle at 80% 70%, rgba(16,185,129,0.14), transparent 40%);
-  animation: bgPulse 10s ease-in-out infinite alternate;
-}
-@keyframes bgFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  will-change: transform, opacity;
+  animation: bgPulse 14s ease-in-out infinite alternate;
 }
 @keyframes bgPulse {
-  from { opacity: 0.6; transform: scale(1); }
-  to { opacity: 1; transform: scale(1.08); }
+  from { opacity: 0.55; transform: scale(1) translate(0, 0); }
+  to { opacity: 0.9; transform: scale(1.06) translate(1%, -1%); }
 }
 
 .titlebar, .app-shell { position: relative; z-index: 1; }
@@ -99,8 +99,11 @@ html, body {
   height: 40px;
   display: flex;
   align-items: center;
-  background: rgba(26, 29, 36, 0.85);
-  backdrop-filter: blur(14px);
+  /* backdrop-filter kaldırıldı: Chromium'da bu her zaman görünür, tam
+     genişlikte bir blur elemanı sürekli GPU'yu meşgul ediyordu ve boşta
+     bile belirgin CPU/GPU kullanımına yol açıyordu (performans optimizasyonu).
+     Benzer görünümü korumak için arka plan biraz daha opak yapıldı. */
+  background: rgba(20, 22, 28, 0.94);
   -webkit-app-region: drag;
   border-bottom: 1px solid var(--border);
 }
@@ -135,8 +138,9 @@ html, body {
 
 .sidebar {
   width: 72px;
-  background: rgba(26, 29, 36, 0.7);
-  backdrop-filter: blur(14px);
+  /* backdrop-filter kaldırıldı (bkz. .titlebar yorumuna); performans için
+     sabit, biraz daha opak bir arka plan kullanılıyor. */
+  background: rgba(20, 22, 28, 0.92);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -213,7 +217,7 @@ h1.page-title { font-size: 20px; font-weight: 600; margin: 0 0 20px; }
   color: var(--accent);
 }
 .instance-card-icon-grass {
-  background-image: url('../assets/icons/grass-profile.png');
+  background-image: url('../../../assets/icons/grass-profile.png');
   background-size: cover;
   background-position: center;
   border: 1px solid var(--border);
@@ -261,7 +265,10 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
 /* ---------- Log panel ---------- */
 .log-panel {
   position: fixed; left: 72px; right: 0; bottom: 0;
-  background: rgba(17,19,24,0.95); backdrop-filter: blur(10px);
+  /* backdrop-filter KALDIRILDI: panel kapalıyken bile başlık şeridi her
+     zaman görünür kaldığından blur sürekli hesaplanıyordu (önemli bir
+     boşta-CPU kaynağıydı). Opak arka plan performans için yeterli. */
+  background: rgba(15,17,21,0.98);
   border-top: 1px solid var(--border);
   height: 160px; transform: translateY(128px);
   transition: transform 180ms ease;

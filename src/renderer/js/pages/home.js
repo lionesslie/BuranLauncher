@@ -27,20 +27,28 @@ window.Pages.home = {
     el.innerHTML = `
       <h1 class="page-title">${t('home.welcome')}${account ? ', ' + account.username : ''}</h1>
       <div class="grid">
-        ${recent.map(inst => `
+        ${recent.map(inst => {
+          const isRunning = window.runningInstances && window.runningInstances.has(inst.id);
+          return `
           <div class="card instance-card" data-id="${inst.id}">
             <div class="instance-card-icon instance-card-icon-grass"></div>
             <div class="instance-card-name">${escapeHtml(inst.name)}</div>
             <div class="instance-card-meta">${inst.version} · ${inst.loader}</div>
             <div class="instance-card-actions">
-              <button class="btn play-btn" data-id="${inst.id}" data-icon-btn="play">${t('home.quickPlay')}</button>
+              ${isRunning
+                ? `<button class="btn danger stop-btn" data-id="${inst.id}">${t('profiles.stop')}</button>`
+                : `<button class="btn play-btn" data-id="${inst.id}">${t('home.quickPlay')}</button>`}
             </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     `;
     el.querySelectorAll('.play-btn').forEach(btn => {
-      btn.onclick = () => window.Pages.profiles.playInstance(btn.getAttribute('data-id'));
+      btn.onclick = () => window.Pages.profiles.playInstance(btn.getAttribute('data-id')).then(() => window.Pages.home.render());
+    });
+    el.querySelectorAll('.stop-btn').forEach(btn => {
+      btn.onclick = () => window.Pages.profiles.stopInstance(btn.getAttribute('data-id')).then(() => window.Pages.home.render());
     });
   }
 };
