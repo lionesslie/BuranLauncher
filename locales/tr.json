@@ -8,6 +8,7 @@
     "modstore": "Mod Mağazası",
     "modpacks": "Modpack'ler",
     "installedMods": "Yüklü Modlar",
+    "resources": "Kaynak & Shader",
     "accounts": "Hesaplar",
     "settings": "Ayarlar"
   },
@@ -80,6 +81,14 @@
   "installedMods": {
     "title": "Yüklü Modlar"
   },
+  "resources": {
+    "title": "Kaynak Paketleri & Shader'lar",
+    "typeResourcepack": "Kaynak Paketi",
+    "typeShader": "Shader",
+    "searchPlaceholder": "Kaynak paketi veya shader ara...",
+    "autoVersionHint": "Sürüm otomatik seçilir: her zaman profilin Minecraft sürümüyle uyumlu en güncel sürüm kurulur.",
+    "installedTitle": "Kurulu"
+  },
   "modpacks": {
     "title": "Modpack'ler",
     "searchPlaceholder": "Modpack ara...",
@@ -118,6 +127,8 @@
     "backgroundEnabled": "Arkaplan görselini göster",
     "backgroundChoose": "Arkaplanı Değiştir",
     "backgroundReset": "Varsayılana Döndür",
+    "discordPresence": "Discord Rich Presence'i etkinleştir",
+    "discordPresenceHint": "Açıkken Discord profilinizde hangi profili oynadığınız gösterilir. Çalışması için Discord masaüstü uygulamasının açık olması ve .env dosyasında DISCORD_CLIENT_ID tanımlı olması gerekir.",
     "extraArgs": "Ek Oyun Argümanları",
     "launchBehavior": "Oyun Başlarken Launcher",
     "launchBehaviorOptions": {

@@ -6,6 +6,7 @@ const instanceManager = require('./instanceManager');
 const authManager = require('./authManager');
 const javaManager = require('./javaManager');
 const { getMinecraftRootDir } = require('./paths');
+const discordPresence = require('./discordPresence');
 
 const activeProcesses = new Map(); // instanceId -> ChildProcess
 
@@ -92,12 +93,14 @@ async function launchInstance(instanceId, { onLog = () => {}, onStatus = () => {
     const durationMs = Date.now() - startedAt;
     instanceManager.recordPlaySession(instanceId, durationMs);
     activeProcesses.delete(instanceId);
+    discordPresence.clearActivity();
     onClose(code);
   });
 
   try {
     const proc = await launcher.launch(opts);
     if (proc) activeProcesses.set(instanceId, proc);
+    discordPresence.setPlaying(instance.name, instance.version);
     return true;
   } catch (err) {
     log.error('Oyun başlatılamadı', err);
@@ -114,6 +117,9 @@ function killInstance(instanceId) {
   if (proc) {
     proc.kill();
     activeProcesses.delete(instanceId);
+    // launcher'ın kendi 'close' olayı genelde bunu zaten tetikler, ancak
+    // garanti olması için burada da temizleniyor.
+    discordPresence.clearActivity();
     return true;
   }
   return false;

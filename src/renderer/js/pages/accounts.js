@@ -18,8 +18,8 @@ window.Pages.accounts = {
     `;
 
     const list = el.querySelector('#acc-list');
-    list.innerHTML = accounts.map(a => `
-      <div class="mod-row">
+    list.innerHTML = accounts.map((a, i) => `
+      <div class="mod-row" style="animation-delay:${i * 40}ms">
         <img class="account-avatar" style="width:36px;height:36px;" src="${window.accountAvatarUrl(a)}" onerror="this.style.visibility='hidden'" />
         <div class="mod-row-info">
           <div class="mod-row-title">${escapeHtml(a.username)}</div>

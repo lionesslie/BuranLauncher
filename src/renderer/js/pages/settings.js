@@ -69,6 +69,13 @@ window.Pages.settings = {
       </div>
 
       <div class="card" style="margin-bottom:16px;">
+        <label style="display:flex; align-items:center; gap:8px; margin:0;">
+          <input type="checkbox" id="s-discord" ${settings.discordPresenceEnabled ? 'checked' : ''} /> ${t('settings.discordPresence')}
+        </label>
+        <p class="subtle" style="margin:8px 0 0;">${t('settings.discordPresenceHint')}</p>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
         <label>${t('settings.background')}</label>
         <label style="display:flex; align-items:center; gap:8px; margin:8px 0;">
           <input type="checkbox" id="s-bg-enabled" ${settings.backgroundEnabled ? 'checked' : ''} /> ${t('settings.backgroundEnabled')}
@@ -140,7 +147,8 @@ window.Pages.settings = {
         launchBehavior: el.querySelector('#s-launch-behavior').value,
         startOnBoot: el.querySelector('#s-start-boot').checked,
         minimizeToTray: el.querySelector('#s-tray').checked,
-        backgroundEnabled: el.querySelector('#s-bg-enabled').checked
+        backgroundEnabled: el.querySelector('#s-bg-enabled').checked,
+        discordPresenceEnabled: el.querySelector('#s-discord').checked
       };
       await window.buran.settings.set(patch);
       showToast(t('toast.settingsSaved'), 'success');

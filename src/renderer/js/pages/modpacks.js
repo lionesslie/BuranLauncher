@@ -70,7 +70,7 @@ window.Pages.modpacks = {
 
     this._searchState = { query, offset: 0, limit: 20, hasMore: true, loading: false };
 
-    results.innerHTML = `<p class="subtle">${t('common.loading')}</p>`;
+    results.innerHTML = loadingHTML();
     try {
       const data = await window.buran.modrinth.searchModpacks({ query, offset: 0, limit: this._searchState.limit });
       results.innerHTML = '';
@@ -108,8 +108,8 @@ window.Pages.modpacks = {
       return;
     }
     const frag = document.createElement('div');
-    frag.innerHTML = hits.map(h => `
-      <div class="card">
+    frag.innerHTML = hits.map((h, i) => `
+      <div class="card" style="animation-delay:${Math.min(i * 35, 350)}ms">
         <img class="mod-card-icon" src="${h.icon_url || ''}" onerror="this.style.display='none'" />
         <div class="instance-card-name">${escapeHtml(h.title)}</div>
         <div class="instance-card-meta">${(h.downloads || 0).toLocaleString()} ${t('modstore.downloads')}</div>

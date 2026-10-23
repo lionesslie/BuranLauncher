@@ -41,7 +41,7 @@ window.Pages.installedmods = {
     instanceSelect.onchange = load;
     checkBtn.onclick = async () => {
       const list = document.getElementById('im-list');
-      list.innerHTML = `<p class="subtle">${t('common.loading')}</p>`;
+      list.innerHTML = loadingHTML();
       try {
         const mods = await window.buran.modrinth.listInstalled(this.selectedInstanceId);
         const updates = await window.buran.modrinth.checkUpdates(this.selectedInstanceId);
@@ -63,10 +63,10 @@ window.Pages.installedmods = {
       list.innerHTML = `<p class="subtle">${t('modstore.noResults')}</p>`;
       return;
     }
-    list.innerHTML = mods.map(m => {
+    list.innerHTML = mods.map((m, i) => {
       const update = m.projectId ? updateMap[m.projectId] : null;
       return `
-        <div class="mod-row">
+        <div class="mod-row" style="animation-delay:${Math.min(i * 30, 300)}ms">
           <div class="mod-row-info">
             <div class="mod-row-title">${escapeHtml(m.title)}</div>
             <div class="mod-row-desc">${m.versionNumber ? m.versionNumber : m.filename}</div>

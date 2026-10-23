@@ -8,6 +8,7 @@
     "modstore": "Магазин модов",
     "modpacks": "Сборки",
     "installedMods": "Установленные моды",
+    "resources": "Ресурспаки и шейдеры",
     "accounts": "Аккаунты",
     "settings": "Настройки"
   },
@@ -80,6 +81,14 @@
   "installedMods": {
     "title": "Установленные моды"
   },
+  "resources": {
+    "title": "Ресурспаки и шейдеры",
+    "typeResourcepack": "Ресурспак",
+    "typeShader": "Шейдер",
+    "searchPlaceholder": "Поиск ресурспака или шейдера...",
+    "autoVersionHint": "Версия выбирается автоматически: всегда устанавливается последняя версия, совместимая с версией Minecraft профиля.",
+    "installedTitle": "Установлено"
+  },
   "modpacks": {
     "title": "Сборки",
     "searchPlaceholder": "Поиск сборок...",
@@ -118,6 +127,8 @@
     "backgroundEnabled": "Показывать фоновое изображение",
     "backgroundChoose": "Изменить фон",
     "backgroundReset": "Сбросить по умолчанию",
+    "discordPresence": "Включить Discord Rich Presence",
+    "discordPresenceHint": "При включении в вашем профиле Discord будет видно, в какой профиль вы играете. Для работы нужен запущенный Discord и указанный в .env DISCORD_CLIENT_ID.",
     "extraArgs": "Дополнительные аргументы игры",
     "launchBehavior": "Launcher при запуске игры",
     "launchBehaviorOptions": {

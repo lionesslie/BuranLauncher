@@ -17,7 +17,7 @@ window.Pages.profiles = {
     `;
 
     const grid = el.querySelector('#profiles-grid');
-    grid.innerHTML = instances.map(inst => this.cardHtml(inst)).join('') || `<p class="subtle">${t('home.noInstances')}</p>`;
+    grid.innerHTML = instances.map((inst, i) => this.cardHtml(inst, i)).join('') || `<p class="subtle">${t('home.noInstances')}</p>`;
     this.bindCardEvents(grid);
 
     el.querySelector('#profiles-new').onclick = () => this.openCreateModal();
@@ -29,12 +29,12 @@ window.Pages.profiles = {
     };
   },
 
-  cardHtml(inst) {
+  cardHtml(inst, index = 0) {
     const lastPlayed = inst.lastPlayed ? new Date(inst.lastPlayed).toLocaleDateString() : t('profiles.never');
     const hours = Math.floor((inst.totalPlaytimeMs || 0) / 3600000);
     const isRunning = window.runningInstances && window.runningInstances.has(inst.id);
     return `
-      <div class="card instance-card" data-id="${inst.id}">
+      <div class="card instance-card" data-id="${inst.id}" style="animation-delay:${Math.min(index * 45, 400)}ms">
         <div class="instance-card-icon instance-card-icon-grass"></div>
         <div class="instance-card-name">${escapeHtml(inst.name)}</div>
         <div class="instance-card-meta">${inst.version} · ${inst.loader}${inst.loaderVersion ? ' ' + inst.loaderVersion : ''}</div>

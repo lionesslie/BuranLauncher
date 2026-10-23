@@ -14,7 +14,8 @@ const store = new Store({
       startOnBoot: false,
       minimizeToTray: true,
       backgroundEnabled: true,
-      backgroundPath: null // null => assets/backgrounds/default.jpg (paket içi); doluysa userData/backgrounds/ altındaki özel dosya
+      backgroundPath: null, // null => assets/backgrounds/default.jpg (paket içi); doluysa userData/backgrounds/ altındaki özel dosya
+      discordPresenceEnabled: true // DISCORD_CLIENT_ID tanımlı değilse zaten devreye girmez
     },
     accounts: [], // {id, type: 'offline'|'microsoft', username, uuid, encryptedToken?}
     activeAccountId: null,

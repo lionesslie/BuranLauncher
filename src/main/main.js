@@ -8,6 +8,7 @@ const log = require('electron-log');
 const store = require('./store');
 const i18n = require('./i18n');
 const { registerIpcHandlers } = require('./ipcHandlers');
+const discordPresence = require('./discordPresence');
 
 log.initialize && log.initialize();
 log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs', 'main.log');
@@ -100,13 +101,17 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   registerIpcHandlers(mainWindow);
+  discordPresence.init(); // Discord açık değilse veya DISCORD_CLIENT_ID yoksa sessizce atlanır
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on('before-quit', () => { isQuitting = true; });
+app.on('before-quit', () => {
+  isQuitting = true;
+  discordPresence.destroy();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

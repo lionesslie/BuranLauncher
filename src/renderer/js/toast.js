@@ -1,3 +1,8 @@
+// Paylaşılan yükleniyor spinner'ı: "Yükleniyor..." yazısı yerine kullanılır.
+function loadingHTML(label) {
+  return `<div class="spinner-wrap"><div class="spinner"></div><span>${label || t('common.loading')}</span></div>`;
+}
+
 function showToast(message, type = 'info', timeoutMs = 4000) {
   const container = document.getElementById('toast-container');
   const el = document.createElement('div');

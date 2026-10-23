@@ -127,6 +127,15 @@ function registerIpcHandlers(mainWindow) {
     return modrinthManager.updateMod(instanceId, projectId, { onProgress });
   }));
 
+  // --- Modrinth: Kaynak Paketi / Shader (tek sayfadan, otomatik sürüm seçimi) ---
+  ipcMain.handle('modrinth:searchContent', wrap((e, params) => modrinthManager.search(params)));
+  ipcMain.handle('modrinth:installContent', wrap((e, { projectId, instanceId, projectType }) => {
+    const onProgress = p => mainWindow.webContents.send('modrinth:progress', { projectId, instanceId, ...p });
+    return modrinthManager.installContentToInstance(projectId, instanceId, { projectType, onProgress });
+  }));
+  ipcMain.handle('modrinth:listInstalledContent', wrap((e, { instanceId, projectType }) => modrinthManager.listInstalledContent(instanceId, projectType)));
+  ipcMain.handle('modrinth:removeContent', wrap((e, { instanceId, projectType, filename }) => modrinthManager.removeContent(instanceId, projectType, filename)));
+
   // --- Modrinth: Modpack ---
   ipcMain.handle('modrinth:searchModpacks', wrap((e, params) => modrinthManager.search({ ...params, projectType: 'modpack' })));
   ipcMain.handle('modrinth:installModpackFile', wrap(async () => {

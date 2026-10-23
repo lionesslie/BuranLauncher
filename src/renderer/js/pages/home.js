@@ -27,10 +27,10 @@ window.Pages.home = {
     el.innerHTML = `
       <h1 class="page-title">${t('home.welcome')}${account ? ', ' + account.username : ''}</h1>
       <div class="grid">
-        ${recent.map(inst => {
+        ${recent.map((inst, i) => {
           const isRunning = window.runningInstances && window.runningInstances.has(inst.id);
           return `
-          <div class="card instance-card" data-id="${inst.id}">
+          <div class="card instance-card" data-id="${inst.id}" style="animation-delay:${i * 45}ms">
             <div class="instance-card-icon instance-card-icon-grass"></div>
             <div class="instance-card-name">${escapeHtml(inst.name)}</div>
             <div class="instance-card-meta">${inst.version} · ${inst.loader}</div>

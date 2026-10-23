@@ -52,24 +52,32 @@ async function getProjectVersions(idOrSlug, { loader = null, gameVersion = null 
 // sürümünden geldiğini bilmez. Bu yüzden her instance'ın kökünde ayrı bir
 // mods-meta.json dosyasında {projectId -> {projectId, title, filename, versionId, versionNumber}}
 // eşlemesi tutulur.
-function getMetaPath(instanceId) {
-  return path.join(instanceManager.getInstanceDir(instanceId), 'mods-meta.json');
+function getMetaPath(instanceId, projectType = 'mod') {
+  const filename = projectType === 'mod' ? 'mods-meta.json' : `${projectType}-meta.json`;
+  return path.join(instanceManager.getInstanceDir(instanceId), filename);
 }
 
-function loadModsMeta(instanceId) {
-  const metaPath = getMetaPath(instanceId);
+function loadModsMeta(instanceId, projectType = 'mod') {
+  const metaPath = getMetaPath(instanceId, projectType);
   if (!fs.existsSync(metaPath)) return {};
   try {
     return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
   } catch (err) {
-    log.warn('mods-meta.json okunamadı, sıfırdan başlatılıyor', err);
+    log.warn(`${metaPath} okunamadı, sıfırdan başlatılıyor`, err);
     return {};
   }
 }
 
-function saveModsMeta(instanceId, meta) {
-  fs.writeFileSync(getMetaPath(instanceId), JSON.stringify(meta, null, 2));
+function saveModsMeta(instanceId, meta, projectType = 'mod') {
+  fs.writeFileSync(getMetaPath(instanceId, projectType), JSON.stringify(meta, null, 2));
 }
+
+// Modrinth projectType -> instance içindeki hedef klasör eşlemesi
+const CONTENT_FOLDER_BY_TYPE = {
+  mod: 'mods',
+  resourcepack: 'resourcepacks',
+  shader: 'shaderpacks'
+};
 
 function verifySha1(filePath, expectedSha1) {
   const buf = fs.readFileSync(filePath);
@@ -155,6 +163,104 @@ async function installModToInstance(projectIdOrSlug, instanceId, { versionId = n
   saveModsMeta(instanceId, meta);
   onProgress({ stage: 'done' });
   return true;
+}
+
+/**
+ * Kaynak paketi (resourcepack) veya shader kurulumu için genel fonksiyon.
+ * Mod kurulumundan farkı: loader filtrelemesi yapılmaz, bağımlılık zinciri
+ * takip edilmez (Modrinth'te kaynak paketi/shader'ların moda benzer zorunlu
+ * bağımlılıkları olmaz) ve dosyalar ilgili klasöre (resourcepacks/ ya da
+ * shaderpacks/) yerleştirilir. Sürüm seçimi HER ZAMAN otomatiktir: Modrinth
+ * API'si sürümleri en yeniden eskiye sıraladığı için ilk sonuç (en son
+ * yayınlanan, instance'ın Minecraft sürümüyle uyumlu sürüm) seçilir.
+ */
+async function installContentToInstance(projectIdOrSlug, instanceId, { versionId = null, projectType, onProgress = () => {} } = {}) {
+  const folderName = CONTENT_FOLDER_BY_TYPE[projectType];
+  if (!folderName) throw new Error('Bilinmeyen içerik türü: ' + projectType);
+
+  const instance = instanceManager.getInstance(instanceId);
+  const targetDir = path.join(instanceManager.getInstanceDir(instanceId), folderName);
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  const meta = loadModsMeta(instanceId, projectType);
+
+  onProgress({ stage: 'resolving', name: projectIdOrSlug });
+  let version;
+  if (versionId) {
+    version = await apiGet(`/version/${versionId}`);
+  } else {
+    // Otomatik sürüm seçimi: sadece Minecraft sürümüne göre filtrelenir,
+    // sonuçların İLKİ (en son yayınlanan uyumlu sürüm) otomatik seçilir.
+    const versions = await getProjectVersions(projectIdOrSlug, { gameVersion: instance.version });
+    if (!versions.length) throw new Error(`"${projectIdOrSlug}" için ${instance.version} ile uyumlu sürüm bulunamadı`);
+    version = versions[0];
+  }
+
+  const already = meta[version.project_id];
+  if (already && fs.existsSync(path.join(targetDir, already.filename))) {
+    log.info(`Zaten kurulu, atlanıyor: ${already.filename}`);
+    onProgress({ stage: 'done' });
+    return true;
+  }
+
+  const primaryFile = version.files.find(f => f.primary) || version.files[0];
+  if (!primaryFile) throw new Error('İndirilecek dosya bulunamadı: ' + projectIdOrSlug);
+
+  const destPath = path.join(targetDir, primaryFile.filename);
+  onProgress({ stage: 'downloading', name: primaryFile.filename });
+  await downloadFile(primaryFile.url, destPath, primaryFile.hashes && primaryFile.hashes.sha1);
+
+  meta[version.project_id] = {
+    projectId: version.project_id,
+    title: projectIdOrSlug,
+    filename: primaryFile.filename,
+    versionId: version.id,
+    versionNumber: version.version_number,
+    installedAt: Date.now()
+  };
+  saveModsMeta(instanceId, meta, projectType);
+
+  onProgress({ stage: 'done' });
+  return true;
+}
+
+function listInstalledContent(instanceId, projectType) {
+  const folderName = CONTENT_FOLDER_BY_TYPE[projectType];
+  if (!folderName) throw new Error('Bilinmeyen içerik türü: ' + projectType);
+
+  const targetDir = path.join(instanceManager.getInstanceDir(instanceId), folderName);
+  const meta = loadModsMeta(instanceId, projectType);
+  const metaByFilename = {};
+  for (const entry of Object.values(meta)) metaByFilename[entry.filename] = entry;
+
+  if (!fs.existsSync(targetDir)) return [];
+  const exts = projectType === 'resourcepack' ? ['.zip'] : ['.zip'];
+  return fs.readdirSync(targetDir)
+    .filter(f => exts.some(ext => f.endsWith(ext)))
+    .map(f => {
+      const matched = metaByFilename[f];
+      return {
+        filename: f,
+        projectId: matched ? matched.projectId : null,
+        title: matched ? matched.title : f.replace(/\.zip$/, ''),
+        versionNumber: matched ? matched.versionNumber : null
+      };
+    });
+}
+
+function removeContent(instanceId, projectType, filename) {
+  const folderName = CONTENT_FOLDER_BY_TYPE[projectType];
+  if (!folderName) throw new Error('Bilinmeyen içerik türü: ' + projectType);
+
+  const targetDir = path.join(instanceManager.getInstanceDir(instanceId), folderName);
+  fs.unlinkSync(path.join(targetDir, filename));
+
+  const meta = loadModsMeta(instanceId, projectType);
+  const projectId = Object.keys(meta).find(pid => meta[pid].filename === filename);
+  if (projectId) {
+    delete meta[projectId];
+    saveModsMeta(instanceId, meta, projectType);
+  }
 }
 
 /**
@@ -315,5 +421,8 @@ module.exports = {
   removeMod,
   checkForUpdates,
   updateMod,
-  installModpackFromFile
+  installModpackFromFile,
+  installContentToInstance,
+  listInstalledContent,
+  removeContent
 };

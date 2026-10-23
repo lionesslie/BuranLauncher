@@ -76,7 +76,7 @@ window.Pages.modstore = {
       installedProjectIds: instance ? new Set((await window.buran.modrinth.listInstalled(instance.id)).map(m => m.projectId).filter(Boolean)) : new Set()
     };
 
-    results.innerHTML = `<p class="subtle">${t('common.loading')}</p>`;
+    results.innerHTML = loadingHTML();
     try {
       const data = await window.buran.modrinth.search({ ...this._searchState, limit: this._searchState.limit, offset: 0 });
       results.innerHTML = '';
@@ -115,11 +115,11 @@ window.Pages.modstore = {
     }
     const installedIds = (this._searchState && this._searchState.installedProjectIds) || new Set();
     const frag = document.createElement('div');
-    frag.innerHTML = hits.map(h => {
+    frag.innerHTML = hits.map((h, i) => {
       const projectId = h.project_id || h.slug;
       const isInstalled = installedIds.has(projectId);
       return `
-      <div class="mod-row">
+      <div class="mod-row" style="animation-delay:${Math.min(i * 30, 300)}ms">
         <img class="mod-row-icon" src="${h.icon_url || ''}" onerror="this.style.visibility='hidden'" />
         <div class="mod-row-info">
           <div class="mod-row-title">${escapeHtml(h.title)}</div>
