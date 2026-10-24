@@ -57,11 +57,26 @@
   <!-- Log paneli (alt açılır) -->
   <div class="log-panel" id="log-panel">
     <div class="log-panel-header">
-      <span data-i18n="log.title"></span>
-      <button id="log-clear" data-i18n="log.clear"></button>
-      <button id="log-toggle">▾</button>
+      <div class="log-panel-header-row1">
+        <span class="log-panel-title" data-i18n="log.title"></span>
+        <div class="log-header-spacer"></div>
+        <button id="log-expand" title="">⤢</button>
+        <button id="log-clear" data-i18n="log.clear"></button>
+        <button id="log-toggle">▾</button>
+      </div>
+      <div class="log-panel-header-row2">
+        <div class="log-filters" id="log-filters">
+          <button class="log-filter-btn active" data-filter="all" data-i18n="log.filters.all"></button>
+          <button class="log-filter-btn" data-filter="error" data-i18n="log.filters.error"></button>
+          <button class="log-filter-btn" data-filter="warn" data-i18n="log.filters.warn"></button>
+          <button class="log-filter-btn" data-filter="game" data-i18n="log.filters.game"></button>
+          <button class="log-filter-btn" data-filter="system" data-i18n="log.filters.system"></button>
+        </div>
+        <input type="search" id="log-search" class="log-search" data-i18n-placeholder="log.searchPlaceholder" />
+      </div>
     </div>
-    <pre class="log-panel-body" id="log-output"></pre>
+    <div class="log-panel-body" id="log-output"></div>
+    <button class="log-jump-bottom" id="log-jump-bottom" style="display:none;" data-i18n="log.jumpToBottom"></button>
   </div>
 
   <!-- Toast konteyneri -->

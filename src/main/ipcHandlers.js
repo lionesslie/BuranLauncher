@@ -138,6 +138,11 @@ function registerIpcHandlers(mainWindow) {
 
   // --- Modrinth: Modpack ---
   ipcMain.handle('modrinth:searchModpacks', wrap((e, params) => modrinthManager.search({ ...params, projectType: 'modpack' })));
+  ipcMain.handle('modrinth:getModpackVersions', wrap((e, projectId) => modrinthManager.getProjectVersions(projectId)));
+  ipcMain.handle('modrinth:installModpackFromProject', wrap((e, { projectId, versionId }) => {
+    const onProgress = p => mainWindow.webContents.send('modpack:progress', p);
+    return modrinthManager.installModpackFromProject(projectId, versionId, { onProgress });
+  }));
   ipcMain.handle('modrinth:installModpackFile', wrap(async () => {
     const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
       filters: [{ name: 'Modrinth Modpack', extensions: ['mrpack'] }],

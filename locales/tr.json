@@ -94,6 +94,8 @@
     "searchPlaceholder": "Modpack ara...",
     "install": "Kur",
     "installing": "Kuruluyor...",
+    "versionLabel": "Sürüm",
+    "noVersions": "Bu modpack için hiç sürüm bulunamadı",
     "step": {
       "manifest": "Manifest okunuyor",
       "downloadingMods": "Modlar indiriliyor {current}/{total}",
@@ -141,7 +143,17 @@
   },
   "log": {
     "title": "Günlük",
-    "clear": "Temizle"
+    "clear": "Temizle",
+    "empty": "Henüz bir kayıt yok.",
+    "searchPlaceholder": "Günlükte ara...",
+    "jumpToBottom": "↓ Yeni mesajlar",
+    "filters": {
+      "all": "Tümü",
+      "error": "Hata",
+      "warn": "Uyarı",
+      "game": "Oyun",
+      "system": "Sistem"
+    }
   },
   "toast": {
     "profileCreated": "Profil oluşturuldu",

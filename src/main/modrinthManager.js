@@ -361,9 +361,48 @@ function removeMod(instanceId, filename) {
 }
 
 /**
- * .mrpack (Modrinth modpack) dosyasından otomatik instance oluşturur.
+ * .mrpack (Modrinth modpack) DOSYASINDAN otomatik instance oluşturur
+ * (elle seçilen yerel dosya için).
  */
 async function installModpackFromFile(mrpackPath, { onProgress = () => {} } = {}) {
+  return installModpackFromMrpackPath(mrpackPath, { onProgress });
+}
+
+/**
+ * Modrinth'teki bir modpack PROJESİNDEN, belirli bir sürümü (verilmezse en
+ * güncel sürümü) indirip otomatik instance oluşturur. "Modpack'ler" sayfasında
+ * arama sonucundaki "Kur" butonu bunu kullanır.
+ */
+async function installModpackFromProject(projectIdOrSlug, versionId = null, { onProgress = () => {} } = {}) {
+  onProgress({ stage: 'manifest' });
+
+  let version;
+  if (versionId) {
+    version = await apiGet(`/version/${versionId}`);
+  } else {
+    const versions = await getProjectVersions(projectIdOrSlug);
+    if (!versions.length) throw new Error('Bu modpack için hiç sürüm bulunamadı');
+    version = versions[0]; // en güncel sürüm
+  }
+
+  const mrpackFile = version.files.find(f => f.filename.endsWith('.mrpack')) || version.files[0];
+  if (!mrpackFile) throw new Error('.mrpack dosyası bulunamadı');
+
+  const tmpDir = path.join(require('electron').app.getPath('temp'), 'buran-launcher-modpacks');
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const tmpPath = path.join(tmpDir, `${Date.now()}-${mrpackFile.filename}`);
+
+  onProgress({ stage: 'downloadingMods', current: 0, total: 1, name: mrpackFile.filename });
+  await downloadFile(mrpackFile.url, tmpPath, mrpackFile.hashes && mrpackFile.hashes.sha1);
+
+  try {
+    return await installModpackFromMrpackPath(tmpPath, { onProgress });
+  } finally {
+    try { fs.unlinkSync(tmpPath); } catch (err) { /* geçici dosya, sorun değil */ }
+  }
+}
+
+async function installModpackFromMrpackPath(mrpackPath, { onProgress = () => {} } = {}) {
   onProgress({ stage: 'manifest' });
   const tmpExtractDir = mrpackPath + '_extracted';
   await extractZip(mrpackPath, { dir: tmpExtractDir });
@@ -422,6 +461,7 @@ module.exports = {
   checkForUpdates,
   updateMod,
   installModpackFromFile,
+  installModpackFromProject,
   installContentToInstance,
   listInstalledContent,
   removeContent

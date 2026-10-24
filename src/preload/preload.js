@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('buran', {
     listInstalledContent: (instanceId, projectType) => invoke('modrinth:listInstalledContent', { instanceId, projectType }),
     removeContent: (instanceId, projectType, filename) => invoke('modrinth:removeContent', { instanceId, projectType, filename }),
     searchModpacks: (params) => invoke('modrinth:searchModpacks', params),
+    getModpackVersions: (projectId) => invoke('modrinth:getModpackVersions', projectId),
+    installModpackFromProject: (projectId, versionId) => invoke('modrinth:installModpackFromProject', { projectId, versionId }),
     installModpackFile: () => invoke('modrinth:installModpackFile'),
     onProgress: (cb) => ipcRenderer.on('modrinth:progress', (e, data) => cb(data)),
     onModpackProgress: (cb) => ipcRenderer.on('modpack:progress', (e, data) => cb(data))

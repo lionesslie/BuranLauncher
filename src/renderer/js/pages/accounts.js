@@ -56,7 +56,7 @@ window.Pages.accounts = {
       } catch (err) {
         // Asıl hata mesajı gösterilir (önceden jenerik mesaj hatayı gizliyordu)
         showToast(`${t('toast.loginFailed')}: ${err.message}`, 'error', 7000);
-        appendLog(`[hata] Microsoft girişi: ${err.message}`);
+        pushLog({ level: 'error', source: 'Hesap', message: `Microsoft girişi: ${err.message}` });
       }
     };
 

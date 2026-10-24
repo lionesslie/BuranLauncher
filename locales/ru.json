@@ -94,6 +94,8 @@
     "searchPlaceholder": "Поиск сборок...",
     "install": "Установить",
     "installing": "Установка...",
+    "versionLabel": "Версия",
+    "noVersions": "Для этой сборки не найдено версий",
     "step": {
       "manifest": "Чтение манифеста",
       "downloadingMods": "Загрузка модов {current}/{total}",
@@ -141,7 +143,17 @@
   },
   "log": {
     "title": "Журнал",
-    "clear": "Очистить"
+    "clear": "Очистить",
+    "empty": "Пока нет записей.",
+    "searchPlaceholder": "Поиск в журнале...",
+    "jumpToBottom": "↓ Новые сообщения",
+    "filters": {
+      "all": "Все",
+      "error": "Ошибки",
+      "warn": "Предупреждения",
+      "game": "Игра",
+      "system": "Система"
+    }
   },
   "toast": {
     "profileCreated": "Профиль создан",

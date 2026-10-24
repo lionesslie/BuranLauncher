@@ -35,31 +35,8 @@ window.Pages.modpacks = {
 
     this.freshSearch();
 
-    el.querySelector('#mp-install-file').onclick = async () => {
-      const progressCard = el.querySelector('#mp-progress');
-      const progressText = el.querySelector('#mp-progress-text');
-      const progressFill = el.querySelector('#mp-progress-fill');
-      progressCard.style.display = 'block';
-
-      const offProgress = (p) => {
-        const label = p.stage === 'manifest' ? t('modpacks.step.manifest')
-          : p.stage === 'downloadingMods' ? t('modpacks.step.downloadingMods', { current: p.current, total: p.total })
-          : p.stage === 'creatingInstance' ? t('modpacks.step.creatingInstance')
-          : t('modpacks.step.done');
-        progressText.textContent = label;
-        const pct = p.total ? Math.round((p.current / p.total) * 100) : (p.stage === 'done' ? 100 : 10);
-        progressFill.style.width = pct + '%';
-      };
-      window.buran.modrinth.onModpackProgress(offProgress);
-
-      try {
-        const instance = await window.buran.modrinth.installModpackFile();
-        if (instance) showToast(t('toast.profileCreated'), 'success');
-      } catch (err) {
-        showToast(t('toast.downloadError', { error: err.message }), 'error');
-      } finally {
-        setTimeout(() => { progressCard.style.display = 'none'; }, 1200);
-      }
+    el.querySelector('#mp-install-file').onclick = () => {
+      this.runInstall(() => window.buran.modrinth.installModpackFile());
     };
   },
 
@@ -108,15 +85,120 @@ window.Pages.modpacks = {
       return;
     }
     const frag = document.createElement('div');
-    frag.innerHTML = hits.map((h, i) => `
+    frag.innerHTML = hits.map((h, i) => {
+      const projectId = h.project_id || h.slug;
+      return `
       <div class="card" style="animation-delay:${Math.min(i * 35, 350)}ms">
         <img class="mod-card-icon" src="${h.icon_url || ''}" onerror="this.style.display='none'" />
         <div class="instance-card-name">${escapeHtml(h.title)}</div>
         <div class="instance-card-meta">${(h.downloads || 0).toLocaleString()} ${t('modstore.downloads')}</div>
         <div class="mod-row-desc" style="white-space:normal; margin:8px 0;">${escapeHtml(h.description || '')}</div>
+        <button class="btn" data-install-modpack="${projectId}" data-title="${escapeHtml(h.title)}">${t('modstore.install')}</button>
       </div>
-    `).join('');
+    `;
+    }).join('');
     while (frag.firstChild) container.appendChild(frag.firstChild);
+
+    container.querySelectorAll('[data-install-modpack]').forEach(btn => {
+      btn.onclick = () => this.openVersionModal(btn.getAttribute('data-install-modpack'), btn.getAttribute('data-title'));
+    });
+  },
+
+  /**
+   * Seçilen modpack için sürüm listesini çeker ve bir seçim penceresi açar.
+   * En güncel sürüm otomatik seçili gelir, ama kullanıcı dropdown'dan
+   * dilediği (örn. eski bir Minecraft sürümüne ait) sürümü seçebilir.
+   */
+  async openVersionModal(projectId, title) {
+    const box = openModal(`
+      <h2>${escapeHtml(title)}</h2>
+      <p class="subtle" style="margin-bottom:14px;">${t('common.loading')}</p>
+    `);
+
+    let versions;
+    try {
+      versions = await window.buran.modrinth.getModpackVersions(projectId);
+    } catch (err) {
+      box.innerHTML = `
+        <h2>${escapeHtml(title)}</h2>
+        <p class="subtle">${t('toast.genericError', { error: err.message })}</p>
+        <div class="modal-actions"><button class="btn secondary" id="mpv-close">${t('common.close')}</button></div>
+      `;
+      box.querySelector('#mpv-close').onclick = closeModal;
+      return;
+    }
+
+    if (!versions.length) {
+      box.innerHTML = `
+        <h2>${escapeHtml(title)}</h2>
+        <p class="subtle">${t('modpacks.noVersions')}</p>
+        <div class="modal-actions"><button class="btn secondary" id="mpv-close">${t('common.close')}</button></div>
+      `;
+      box.querySelector('#mpv-close').onclick = closeModal;
+      return;
+    }
+
+    box.innerHTML = `
+      <h2>${escapeHtml(title)}</h2>
+      <div class="field">
+        <label>${t('modpacks.versionLabel')}</label>
+        <select id="mpv-select" style="width:100%;">
+          ${versions.map((v, i) => `
+            <option value="${v.id}" ${i === 0 ? 'selected' : ''}>
+              ${escapeHtml(v.version_number)} — Minecraft ${(v.game_versions || []).join(', ')}
+            </option>
+          `).join('')}
+        </select>
+        <p class="subtle" style="margin-top:8px;">${t('resources.autoVersionHint')}</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="mpv-cancel">${t('profiles.cancel')}</button>
+        <button class="btn" id="mpv-confirm">${t('modpacks.install')}</button>
+      </div>
+    `;
+
+    box.querySelector('#mpv-cancel').onclick = closeModal;
+    box.querySelector('#mpv-confirm').onclick = () => {
+      const versionId = box.querySelector('#mpv-select').value;
+      closeModal();
+      this.runInstall(() => window.buran.modrinth.installModpackFromProject(projectId, versionId));
+    };
+  },
+
+  /**
+   * İlerleme kartını gösterip verilen kurulum fonksiyonunu çalıştırır.
+   * Hem ".mrpack dosyasından kur" hem "Modrinth projesinden kur" akışları
+   * bu ortak fonksiyonu kullanır.
+   */
+  runInstall(installFn) {
+    const progressCard = document.getElementById('mp-progress');
+    const progressText = document.getElementById('mp-progress-text');
+    const progressFill = document.getElementById('mp-progress-fill');
+    progressCard.style.display = 'block';
+    progressText.textContent = t('modpacks.step.manifest');
+    progressFill.style.width = '5%';
+
+    const offProgress = (p) => {
+      const label = p.stage === 'manifest' ? t('modpacks.step.manifest')
+        : p.stage === 'downloadingMods' ? t('modpacks.step.downloadingMods', { current: p.current, total: p.total })
+        : p.stage === 'creatingInstance' ? t('modpacks.step.creatingInstance')
+        : t('modpacks.step.done');
+      progressText.textContent = label;
+      const pct = p.total ? Math.round((p.current / p.total) * 100) : (p.stage === 'done' ? 100 : 10);
+      progressFill.style.width = pct + '%';
+    };
+    window.buran.modrinth.onModpackProgress(offProgress);
+
+    (async () => {
+      try {
+        const instance = await installFn();
+        if (instance) showToast(t('toast.profileCreated'), 'success');
+      } catch (err) {
+        showToast(t('toast.downloadError', { error: err.message }), 'error');
+      } finally {
+        setTimeout(() => { progressCard.style.display = 'none'; }, 1200);
+      }
+    })();
   }
 };
 
