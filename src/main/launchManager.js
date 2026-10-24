@@ -100,7 +100,7 @@ async function launchInstance(instanceId, { onLog = () => {}, onStatus = () => {
   try {
     const proc = await launcher.launch(opts);
     if (proc) activeProcesses.set(instanceId, proc);
-    discordPresence.setPlaying(instance.name, instance.version);
+    discordPresence.setPlaying(instance.name, instance.version, instance.loader);
     return true;
   } catch (err) {
     log.error('Oyun başlatılamadı', err);

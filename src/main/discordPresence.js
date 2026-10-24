@@ -67,21 +67,45 @@ async function setActivitySafe(activity) {
   }
 }
 
+const LOADER_LABELS = {
+  fabric: 'Fabric',
+  quilt: 'Quilt',
+  forge: 'Forge',
+  neoforge: 'NeoForge'
+};
+
 /**
  * Bir profil/instance oynanmaya başladığında çağrılır.
+ *
+ * Alan isimleri (details/state/timestamps/largeImage.../smallImage...),
+ * Discord'un resmi Rich Presence aktivite şemasıyla birebir aynıdır (bkz.
+ * Discord Game SDK'nin C örneğindeki DiscordRichPresence struct'ı: state,
+ * details, startTimestamp, largeImageKey/Text, smallImageKey/Text).
+ * BİLİNÇLİ OLARAK EKLENMEYENLER: partyId/partySize/partyMax/joinSecret gibi
+ * çoklu oyuncu/parti alanları — Buran Launcher gerçek bir multiplayer
+ * oturumu/parti verisi takip etmediği için bunları sahte doldurmak yerine
+ * tamamen boş bırakıyoruz.
  */
-async function setPlaying(instanceName, mcVersion) {
+async function setPlaying(instanceName, mcVersion, loader) {
   if (!isEnabled()) return;
   // Ayar sonradan açıldıysa veya ilk bağlantı denemesi başarısız olduysa
   // (örn. Discord o an kapalıydı), her oyun başlatmada yeniden denenir.
   if (!client) await init();
 
+  const loaderLabel = loader && LOADER_LABELS[loader];
+
   await setActivitySafe({
     details: `${instanceName} oynuyor`,
-    state: mcVersion ? `Minecraft ${mcVersion}` : undefined,
+    state: mcVersion ? `Minecraft ${mcVersion}${loaderLabel ? ' · ' + loaderLabel : ''}` : undefined,
     startTimestamp: new Date(),
-    largeImageKey: 'buran_logo', // Discord Developer Portal'da "Rich Presence Assets" altında bu isimle bir görsel yüklenmeli
+    largeImageKey: 'buran_logo', // Discord Developer Portal -> Rich Presence -> Art Assets altında bu isimle yüklenmeli
     largeImageText: 'Buran Launcher',
+    // Küçük rozet (opsiyonel): yükleyici türüne göre. Çalışması için Art
+    // Assets'e 'fabric' | 'quilt' | 'forge' | 'neoforge' adlarıyla küçük
+    // birer logo yüklenmesi gerekir; yüklenmemişse Discord sadece rozeti
+    // göstermez, hata vermez — "state" metninde yükleyici adı zaten var.
+    smallImageKey: loaderLabel ? loader : undefined,
+    smallImageText: loaderLabel,
     instance: false
   });
 }
