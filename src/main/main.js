@@ -9,6 +9,7 @@ const store = require('./store');
 const i18n = require('./i18n');
 const { registerIpcHandlers } = require('./ipcHandlers');
 const discordPresence = require('./discordPresence');
+const updater = require('./updater');
 
 log.initialize && log.initialize();
 log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs', 'main.log');
@@ -101,7 +102,8 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   registerIpcHandlers(mainWindow);
-  discordPresence.init(); // Discord açık değilse veya DISCORD_CLIENT_ID yoksa sessizce atlanır
+  discordPresence.init(mainWindow); // Discord açık değilse veya DISCORD_CLIENT_ID yoksa sessizce atlanır; durum Günlük paneline akar
+  updater.init(mainWindow); // Geliştirme modunda veya publish yapılandırılmamışsa sessizce atlanır
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

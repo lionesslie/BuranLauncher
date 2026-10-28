@@ -82,6 +82,23 @@ contextBridge.exposeInMainWorld('buran', {
     get: () => invoke('settings:get'),
     set: (patch) => invoke('settings:set', patch)
   },
+  discord: {
+    onLog: (cb) => ipcRenderer.on('discord:log', (e, data) => cb(data))
+  },
+  updater: {
+    check: () => invoke('updater:check'),
+    download: () => invoke('updater:download'),
+    install: () => invoke('updater:install'),
+    getVersion: () => invoke('updater:getVersion'),
+    onStatus: (cb) => ipcRenderer.on('updater:status', (e, data) => cb(data))
+  },
+  worlds: {
+    list: (instanceId) => invoke('worlds:list', instanceId),
+    delete: (instanceId, folderName) => invoke('worlds:delete', { instanceId, folderName }),
+    openFolder: (instanceId, folderName) => invoke('worlds:openFolder', { instanceId, folderName }),
+    backup: (instanceId, folderName) => invoke('worlds:backup', { instanceId, folderName }),
+    import: (instanceId) => invoke('worlds:import', instanceId)
+  },
   background: {
     get: () => invoke('background:get'),
     choose: () => invoke('background:choose'),

@@ -20,6 +20,7 @@
     "minecraft-launcher-core": "^3.18.1",
     "msmc": "latest",
     "@xhayper/discord-rpc": "latest",
+    "electron-updater": "^6.3.9",
     "node-fetch": "^2.7.0",
     "extract-zip": "^2.0.1",
     "adm-zip": "^0.5.12",
@@ -35,6 +36,11 @@
     "copyright": "Buran Launcher",
     "directories": {
       "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "BURAYA_GITHUB_KULLANICI_ADINIZI_YAZIN",
+      "repo": "buran-launcher"
     },
     "files": [
       "src/**/*",

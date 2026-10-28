@@ -1,5 +1,5 @@
 // Uygulama giriş noktası: sayfa yönlendirme, title bar, genel kurulum
-const PAGES = ['home', 'profiles', 'modstore', 'modpacks', 'installedmods', 'resources', 'accounts', 'settings'];
+const PAGES = ['home', 'profiles', 'modstore', 'modpacks', 'installedmods', 'resources', 'worlds', 'accounts', 'settings'];
 
 // Şu an çalışan instance'ların kimliklerini tutar; "Oyna" <-> "Durdur"
 // düğme durumunu belirlemek için home.js ve profiles.js tarafından okunur.

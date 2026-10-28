@@ -18,6 +18,17 @@ window.Pages.settings = {
       </div>
 
       <div class="card" style="margin-bottom:16px;">
+        <label>${t('settings.updates')}</label>
+        <p class="subtle" style="margin:4px 0 10px;">${t('settings.currentVersion')}: v${await window.buran.updater.getVersion()}</p>
+        <div id="update-status" class="subtle" style="margin-bottom:10px; min-height:16px;"></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn secondary" id="s-check-update">${t('settings.checkUpdates')}</button>
+          <button class="btn" id="s-download-update" style="display:none;">${t('settings.downloadUpdate')}</button>
+          <button class="btn" id="s-install-update" style="display:none;">${t('settings.installUpdate')}</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
         <label>${t('settings.ram')}</label>
         <div style="display:flex; gap:20px; margin-top:8px;">
           <div style="flex:1;">
@@ -88,6 +99,54 @@ window.Pages.settings = {
 
       <button class="btn" id="s-save">${t('profiles.save')}</button>
     `;
+
+    // --- Otomatik güncelleme ---
+    const updateStatusEl = el.querySelector('#update-status');
+    const checkBtn = el.querySelector('#s-check-update');
+    const downloadBtn = el.querySelector('#s-download-update');
+    const installBtn = el.querySelector('#s-install-update');
+
+    function renderUpdateStatus(data) {
+      if (!data) return;
+      if (data.stage === 'checking') updateStatusEl.textContent = t('settings.updateStatus.checking');
+      else if (data.stage === 'none') updateStatusEl.textContent = t('settings.updateStatus.none');
+      else if (data.stage === 'available') {
+        updateStatusEl.textContent = t('settings.updateStatus.available', { version: data.version });
+        downloadBtn.style.display = 'inline-block';
+      } else if (data.stage === 'downloading') {
+        updateStatusEl.textContent = t('settings.updateStatus.downloading', { percent: data.percent });
+        downloadBtn.style.display = 'none';
+      } else if (data.stage === 'downloaded') {
+        updateStatusEl.textContent = t('settings.updateStatus.downloaded', { version: data.version });
+        downloadBtn.style.display = 'none';
+        installBtn.style.display = 'inline-block';
+      } else if (data.stage === 'error') {
+        updateStatusEl.textContent = t('settings.updateStatus.error', { error: data.message });
+      }
+    }
+    window.buran.updater.onStatus(renderUpdateStatus);
+
+    checkBtn.onclick = async () => {
+      updateStatusEl.textContent = t('settings.updateStatus.checking');
+      try {
+        const result = await window.buran.updater.check();
+        if (result && result.dev) updateStatusEl.textContent = t('settings.updateStatus.devMode');
+      } catch (err) {
+        updateStatusEl.textContent = t('settings.updateStatus.error', { error: err.message });
+      }
+    };
+    downloadBtn.onclick = async () => {
+      try {
+        await window.buran.updater.download();
+      } catch (err) {
+        showToast(t('toast.genericError', { error: err.message }), 'error');
+      }
+    };
+    installBtn.onclick = async () => {
+      const ok = await confirmDialog(t('settings.updateStatus.installConfirm'));
+      if (!ok) return;
+      await window.buran.updater.install();
+    };
 
     el.querySelector('#s-lang').onchange = async (e) => {
       await changeLang(e.target.value);

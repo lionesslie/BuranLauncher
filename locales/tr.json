@@ -9,6 +9,7 @@
     "modpacks": "Modpack'ler",
     "installedMods": "Yüklü Modlar",
     "resources": "Kaynak & Shader",
+    "worlds": "Dünyalar",
     "accounts": "Hesaplar",
     "settings": "Ayarlar"
   },
@@ -81,6 +82,17 @@
   "installedMods": {
     "title": "Yüklü Modlar"
   },
+  "worlds": {
+    "title": "Dünyalar",
+    "import": "İçe Aktar (.zip)",
+    "imported": "Dünya içe aktarıldı",
+    "empty": "Bu profilde hiç dünya yok.",
+    "backup": "Yedekle",
+    "openFolder": "Klasörü Aç",
+    "delete": "Sil",
+    "deleted": "Dünya silindi",
+    "deleteConfirm": "\"{name}\" dünyasını kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
+  },
   "resources": {
     "title": "Kaynak Paketleri & Shader'lar",
     "typeResourcepack": "Kaynak Paketi",
@@ -117,6 +129,21 @@
   "settings": {
     "title": "Ayarlar",
     "language": "Dil",
+    "updates": "Güncellemeler",
+    "currentVersion": "Mevcut sürüm",
+    "checkUpdates": "Güncellemeleri Kontrol Et",
+    "downloadUpdate": "Güncellemeyi İndir",
+    "installUpdate": "Yükle ve Yeniden Başlat",
+    "updateStatus": {
+      "checking": "Kontrol ediliyor...",
+      "none": "Zaten en güncel sürümdesiniz.",
+      "available": "Yeni sürüm mevcut: v{version}",
+      "downloading": "İndiriliyor... %{percent}",
+      "downloaded": "v{version} indirildi, yüklemeye hazır.",
+      "error": "Güncelleme hatası: {error}",
+      "devMode": "Geliştirme modunda (paketlenmemiş) güncelleme kontrol edilemez.",
+      "installConfirm": "Launcher kapanıp güncellemeyi kuracak ve yeniden başlayacak. Devam edilsin mi?"
+    },
     "ram": "Bellek (RAM) Ayarı",
     "ramMin": "Minimum",
     "ramMax": "Maksimum",

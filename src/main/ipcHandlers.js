@@ -14,6 +14,8 @@ const loaderManager = require('./loaderManager');
 const javaManager = require('./javaManager');
 const launchManager = require('./launchManager');
 const backgroundManager = require('./backgroundManager');
+const worldManager = require('./worldManager');
+const updater = require('./updater');
 
 function wrap(handler) {
   return async (event, ...args) => {
@@ -177,6 +179,33 @@ function registerIpcHandlers(mainWindow) {
     store.set('settings', updated);
     app.setLoginItemSettings({ openAtLogin: !!updated.startOnBoot });
     return updated;
+  }));
+
+  // --- Otomatik güncelleme ---
+  ipcMain.handle('updater:check', wrap(() => updater.checkForUpdates()));
+  ipcMain.handle('updater:download', wrap(() => updater.downloadUpdate()));
+  ipcMain.handle('updater:install', wrap(() => updater.quitAndInstall()));
+  ipcMain.handle('updater:getVersion', wrap(() => updater.getCurrentVersion()));
+
+  // --- Dünyalar (saves) ---
+  ipcMain.handle('worlds:list', wrap((e, instanceId) => worldManager.listWorlds(instanceId)));
+  ipcMain.handle('worlds:delete', wrap((e, { instanceId, folderName }) => worldManager.deleteWorld(instanceId, folderName)));
+  ipcMain.handle('worlds:openFolder', wrap((e, { instanceId, folderName }) => worldManager.openWorldFolder(instanceId, folderName)));
+  ipcMain.handle('worlds:backup', wrap(async (e, { instanceId, folderName }) => {
+    const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: `${folderName}.zip`,
+      filters: [{ name: 'Zip Arşivi', extensions: ['zip'] }]
+    });
+    if (canceled || !filePath) return null;
+    return worldManager.backupWorld(instanceId, folderName, filePath);
+  }));
+  ipcMain.handle('worlds:import', wrap(async (e, instanceId) => {
+    const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
+      filters: [{ name: 'Zip Arşivi', extensions: ['zip'] }],
+      properties: ['openFile']
+    });
+    if (canceled || !filePaths.length) return null;
+    return worldManager.importWorld(instanceId, filePaths[0]);
   }));
 
   // --- Arkaplan ---

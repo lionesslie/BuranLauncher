@@ -20,7 +20,7 @@ const LOG_LEVEL_ICON = {
 // 'game' filtresi Oyun+Java+İndirme'yi, 'system' filtresi Sistem+Hesap'ı kapsar.
 const SOURCE_FILTER_GROUP = {
   game: ['Oyun', 'Java', 'İndirme'],
-  system: ['Sistem', 'Hesap']
+  system: ['Sistem', 'Hesap', 'Discord']
 };
 
 function formatTime(ts) {
@@ -216,6 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   fullRerender();
+
+  // --- Discord Rich Presence bağlantı/durum olayları ---
+  window.buran.discord.onLog(({ level, source, message }) => {
+    pushLog({ level, source: source || 'Discord', message });
+  });
 
   // --- Oyun/launch olaylarının günlüğe akması ---
   window.buran.launch.onLog(({ line }) => appendLog(line));

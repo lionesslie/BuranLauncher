@@ -4,66 +4,121 @@
 // NOT (doğrulama gerekli): @xhayper/discord-rpc paketinin tam API'si
 // `npm install` sonrası node_modules/@xhayper/discord-rpc belgeleriyle
 // doğrulanmalı — burada en yaygın kullanım deseni (Client + login +
-// user.setActivity) esas alınmıştır. API küçük farklılıklar gösterirse
-// (örn. setActivity doğrudan client üzerinde olabilir), aşağıdaki
-// setActivitySafe() fonksiyonu birkaç olası çağrı şeklini sırayla dener.
+// user.setActivity) esas alınmıştır.
 //
 // Discord yüklü değilse, kapalıysa, DISCORD_CLIENT_ID tanımlı değilse ya da
 // bağlantı herhangi bir sebeple başarısız olursa bu modül SESSİZCE devre dışı
 // kalır — launcher'ın normal çalışmasını asla engellemez ya da hata fırlatmaz.
+// ANCAK: tüm bağlantı/durum adımları artık hem electron-log'a HEM DE
+// renderer'daki Günlük paneline ("Discord" kaynağıyla) gönderiliyor, böylece
+// bir şey çalışmazsa sebebi diskteki log dosyasını açmadan görülebilir.
 const log = require('electron-log');
 const store = require('./store');
 
 let client = null;
 let isReady = false;
-let connectAttempted = false;
+let initPromise = null;
+let mainWindowRef = null;
+
+function notify(level, message) {
+  if (level === 'error') log.error('[Discord] ' + message);
+  else if (level === 'warn') log.warn('[Discord] ' + message);
+  else log.info('[Discord] ' + message);
+
+  if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+    mainWindowRef.webContents.send('discord:log', { level, source: 'Discord', message });
+  }
+}
 
 function isEnabled() {
   const settings = store.get('settings');
   return settings.discordPresenceEnabled !== false && !!process.env.DISCORD_CLIENT_ID;
 }
 
-async function init() {
-  if (client) return; // zaten bağlı/bağlanıyor
-  connectAttempted = true;
+/**
+ * mainWindow referansı, bağlantı durumunu renderer'daki Günlük paneline
+ * yazabilmek için app başlangıcında bir kez verilir.
+ */
+async function init(mainWindow) {
+  if (mainWindow) mainWindowRef = mainWindow;
+  if (initPromise) return initPromise; // zaten bağlanıyor/bağlandı, tekrar başlatma
 
   if (!isEnabled()) {
-    log.info('Discord Rich Presence devre dışı (ayar kapalı veya DISCORD_CLIENT_ID tanımsız).');
+    const settings = store.get('settings');
+    if (!settings.discordPresenceEnabled) {
+      notify('info', 'Devre dışı (Ayarlar\'dan kapalı).');
+    } else {
+      notify('info', 'DISCORD_CLIENT_ID tanımlı değil, bağlantı denenmiyor (.env dosyasını kontrol edin).');
+    }
     return;
   }
 
-  try {
-    const { Client } = require('@xhayper/discord-rpc');
-    client = new Client({ clientId: process.env.DISCORD_CLIENT_ID });
+  notify('info', 'DISCORD_CLIENT_ID bulundu, Discord\'a bağlanılıyor...');
 
-    client.on('ready', () => {
-      isReady = true;
-      log.info('Discord Rich Presence bağlandı.');
-    });
+  initPromise = (async () => {
+    try {
+      const { Client } = require('@xhayper/discord-rpc');
+      client = new Client({ clientId: process.env.DISCORD_CLIENT_ID });
 
-    // Discord masaüstü istemcisi açık değilse bu reddedilir; bu normaldir,
-    // sessizce yoksayılır (launcher'ı etkilemez).
-    await client.login().catch(err => {
-      log.info('Discord Rich Presence bağlanamadı (Discord açık olmayabilir): ' + err.message);
+      const readyPromise = new Promise(resolve => {
+        client.on('ready', () => {
+          isReady = true;
+          notify('success', 'Bağlandı ve hazır.');
+          resolve();
+        });
+      });
+
+      client.on('disconnected', () => {
+        isReady = false;
+        notify('warn', 'Bağlantı koptu.');
+      });
+
+      let loginFailed = false;
+      await client.login().catch(err => {
+        loginFailed = true;
+        notify('warn', 'Bağlanılamadı — Discord masaüstü uygulaması açık mı? (' + err.message + ')');
+        client = null;
+      });
+
+      if (loginFailed) return;
+
+      // login() çözüldükten sonra 'ready' olayının gelmesini en fazla 6 saniye
+      // bekle; önceki sürümde bu bekleme YOKTU ve setActivity çağrıları
+      // isReady henüz true olmadan sessizce hiçbir şey yapmadan dönüyordu.
+      await Promise.race([readyPromise, new Promise(resolve => setTimeout(resolve, 6000))]);
+      if (!isReady) {
+        notify('warn', '"ready" sinyali 6 saniyede gelmedi, durum gösterilemeyebilir.');
+      }
+    } catch (err) {
+      notify('error', 'Başlatılamadı: ' + err.message);
       client = null;
-    });
-  } catch (err) {
-    log.warn('Discord Rich Presence başlatılamadı: ' + err.message);
-    client = null;
-  }
+    }
+  })();
+
+  return initPromise;
 }
 
 async function setActivitySafe(activity) {
-  if (!client || !isReady) return;
+  if (!client) {
+    notify('warn', 'Durum gönderilemedi: Discord\'a bağlı değil.');
+    return;
+  }
+  if (!isReady) {
+    notify('warn', 'Durum gönderilemedi: bağlantı henüz "hazır" değil.');
+    return;
+  }
   try {
-    // Bilinen olası API şekilleri sırayla denenir (sürüme göre değişebilir).
     if (client.user && typeof client.user.setActivity === 'function') {
       await client.user.setActivity(activity);
     } else if (typeof client.setActivity === 'function') {
       await client.setActivity(activity);
+    } else {
+      notify('error', 'setActivity fonksiyonu bulunamadı (paket API\'si beklenenden farklı olabilir).');
+      return;
     }
+    notify('info', `Durum güncellendi: "${activity.details}"`);
   } catch (err) {
-    log.warn('Discord durumu güncellenemedi: ' + err.message);
+    notify('error', 'Durum güncellenemedi: ' + err.message);
   }
 }
 
@@ -78,19 +133,14 @@ const LOADER_LABELS = {
  * Bir profil/instance oynanmaya başladığında çağrılır.
  *
  * Alan isimleri (details/state/timestamps/largeImage.../smallImage...),
- * Discord'un resmi Rich Presence aktivite şemasıyla birebir aynıdır (bkz.
- * Discord Game SDK'nin C örneğindeki DiscordRichPresence struct'ı: state,
- * details, startTimestamp, largeImageKey/Text, smallImageKey/Text).
+ * Discord'un resmi Rich Presence aktivite şemasıyla birebir aynıdır.
  * BİLİNÇLİ OLARAK EKLENMEYENLER: partyId/partySize/partyMax/joinSecret gibi
  * çoklu oyuncu/parti alanları — Buran Launcher gerçek bir multiplayer
- * oturumu/parti verisi takip etmediği için bunları sahte doldurmak yerine
- * tamamen boş bırakıyoruz.
+ * oturumu/parti verisi takip etmediği için bunları sahte doldurmuyoruz.
  */
 async function setPlaying(instanceName, mcVersion, loader) {
   if (!isEnabled()) return;
-  // Ayar sonradan açıldıysa veya ilk bağlantı denemesi başarısız olduysa
-  // (örn. Discord o an kapalıydı), her oyun başlatmada yeniden denenir.
-  if (!client) await init();
+  if (!client || !isReady) await init(mainWindowRef);
 
   const loaderLabel = loader && LOADER_LABELS[loader];
 
@@ -100,10 +150,6 @@ async function setPlaying(instanceName, mcVersion, loader) {
     startTimestamp: new Date(),
     largeImageKey: 'buran_logo', // Discord Developer Portal -> Rich Presence -> Art Assets altında bu isimle yüklenmeli
     largeImageText: 'Buran Launcher',
-    // Küçük rozet (opsiyonel): yükleyici türüne göre. Çalışması için Art
-    // Assets'e 'fabric' | 'quilt' | 'forge' | 'neoforge' adlarıyla küçük
-    // birer logo yüklenmesi gerekir; yüklenmemişse Discord sadece rozeti
-    // göstermez, hata vermez — "state" metninde yükleyici adı zaten var.
     smallImageKey: loaderLabel ? loader : undefined,
     smallImageText: loaderLabel,
     instance: false
@@ -121,8 +167,9 @@ async function clearActivity() {
     } else if (typeof client.clearActivity === 'function') {
       await client.clearActivity();
     }
+    notify('info', 'Durum temizlendi.');
   } catch (err) {
-    log.warn('Discord durumu temizlenemedi: ' + err.message);
+    notify('warn', 'Durum temizlenemedi: ' + err.message);
   }
 }
 
@@ -132,6 +179,7 @@ function destroy() {
   }
   client = null;
   isReady = false;
+  initPromise = null;
 }
 
 module.exports = { init, setPlaying, clearActivity, destroy, isEnabled };
