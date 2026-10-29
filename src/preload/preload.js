@@ -85,6 +85,22 @@ contextBridge.exposeInMainWorld('buran', {
   discord: {
     onLog: (cb) => ipcRenderer.on('discord:log', (e, data) => cb(data))
   },
+  servers: {
+    list: () => invoke('servers:list'),
+    create: (data) => invoke('servers:create', data),
+    update: (serverId, patch) => invoke('servers:update', { serverId, patch }),
+    delete: (serverId) => invoke('servers:delete', serverId),
+    openFolder: (serverId) => invoke('servers:openFolder', serverId),
+    isRunning: (serverId) => invoke('servers:isRunning', serverId),
+    getProperties: (serverId) => invoke('servers:getProperties', serverId),
+    setProperties: (serverId, patch) => invoke('servers:setProperties', { serverId, patch }),
+    start: (serverId) => invoke('servers:start', serverId),
+    stop: (serverId) => invoke('servers:stop', serverId),
+    sendCommand: (serverId, command) => invoke('servers:sendCommand', { serverId, command }),
+    onCreateProgress: (cb) => ipcRenderer.on('servers:createProgress', (e, data) => cb(data)),
+    onLog: (cb) => ipcRenderer.on('servers:log', (e, data) => cb(data)),
+    onClosed: (cb) => ipcRenderer.on('servers:closed', (e, data) => cb(data))
+  },
   updater: {
     check: () => invoke('updater:check'),
     download: () => invoke('updater:download'),

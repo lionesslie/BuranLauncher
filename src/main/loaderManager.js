@@ -110,11 +110,134 @@ async function installForgeLike({ type, mcVersion, loaderVersion, javaBinPath, o
   return type === 'neoforge' ? `neoforge-${loaderVersion}` : `${mcVersion}-forge-${loaderVersion}`;
 }
 
+// ============================================================
+// SUNUCU (server) kurulumları — "Sunucu Barındırma" sekmesi için.
+// İstemci kurulumlarından farklı olarak her sunucu kendi klasöründe
+// (serverDir) tam bağımsız bir server.jar/run script'i barındırır.
+// ============================================================
+
+async function getLatestFabricInstallerVersion() {
+  const res = await fetch(`${FABRIC_META}/versions/installer`);
+  if (!res.ok) throw new Error('Fabric installer sürümleri alınamadı');
+  const list = await res.json();
+  if (!list.length) throw new Error('Fabric installer sürümü bulunamadı');
+  return list[0].version;
+}
+
+async function getLatestQuiltInstallerVersion() {
+  const res = await fetch(`${QUILT_META}/versions/installer`);
+  if (!res.ok) throw new Error('Quilt installer sürümleri alınamadı');
+  const list = await res.json();
+  if (!list.length) throw new Error('Quilt installer sürümü bulunamadı');
+  return list[0].version;
+}
+
+/**
+ * Fabric sunucu kurulumu: Fabric'in resmi "server/jar" uç noktası TEK bir
+ * çalıştırılabilir fat-jar üretir (ayrı bir installer çalıştırmaya gerek yok).
+ */
+async function installFabricServer(serverDir, mcVersion, loaderVersion, onProgress = () => {}) {
+  onProgress({ stage: 'resolvingInstaller' });
+  const installerVersion = await getLatestFabricInstallerVersion();
+
+  onProgress({ stage: 'downloading' });
+  const url = `${FABRIC_META}/versions/loader/${mcVersion}/${loaderVersion}/${installerVersion}/server/jar`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Fabric sunucu dosyası indirilemedi (sürüm uyumunu kontrol edin)');
+  const buffer = await res.buffer();
+  const jarPath = path.join(serverDir, 'server.jar');
+  fs.writeFileSync(jarPath, buffer);
+
+  onProgress({ stage: 'done' });
+  return { type: 'jar', jarFile: 'server.jar' };
+}
+
+async function installQuiltServer(serverDir, mcVersion, loaderVersion, onProgress = () => {}) {
+  onProgress({ stage: 'resolvingInstaller' });
+  const installerVersion = await getLatestQuiltInstallerVersion();
+
+  onProgress({ stage: 'downloading' });
+  const url = `${QUILT_META}/versions/loader/${mcVersion}/${loaderVersion}/${installerVersion}/server/jar`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Quilt sunucu dosyası indirilemedi (sürüm uyumunu kontrol edin)');
+  const buffer = await res.buffer();
+  const jarPath = path.join(serverDir, 'server.jar');
+  fs.writeFileSync(jarPath, buffer);
+
+  onProgress({ stage: 'done' });
+  return { type: 'jar', jarFile: 'server.jar' };
+}
+
+/**
+ * Forge / NeoForge SUNUCU kurulumu: resmi installer.jar, --installServer
+ * parametresiyle doğrudan sunucu klasörüne kurulur.
+ *
+ * NOT (düşük doğrulama): Modern Forge/NeoForge (1.17+) kurulumdan sonra tek
+ * bir jar değil, bir "run.sh"/"run.bat" betiği + libraries/ klasörü üretir;
+ * bu betiği doğrudan çalıştırmak en güvenilir yöntemdir (java komutunu elle
+ * yeniden kurmaya çalışmak sürümden sürüme kırılgandır). Eski Forge
+ * sürümlerinde (1.16 ve öncesi) tek bir "forge-...-universal.jar" üretilir.
+ * Bu fonksiyon ikisini de algılamaya çalışır; gerçek bir kurulumla
+ * doğrulanmadı — ilk denemede sorun çıkarsa birlikte düzeltelim.
+ */
+async function installForgeLikeServer(serverDir, { type, mcVersion, loaderVersion, javaBinPath, onProgress = () => {} }) {
+  onProgress({ stage: 'resolvingInstaller' });
+
+  const installerUrl = type === 'neoforge'
+    ? `https://maven.neoforged.net/releases/net/neoforged/neoforge/${loaderVersion}/neoforge-${loaderVersion}-installer.jar`
+    : `https://maven.minecraftforge.net/net/minecraftforge/forge/${mcVersion}-${loaderVersion}/forge-${mcVersion}-${loaderVersion}-installer.jar`;
+
+  const installerPath = path.join(serverDir, `${type}-installer.jar`);
+
+  onProgress({ stage: 'downloading' });
+  const res = await fetch(installerUrl);
+  if (!res.ok) throw new Error(`${type === 'neoforge' ? 'NeoForge' : 'Forge'} yükleyicisi indirilemedi (sürüm numarasını kontrol edin)`);
+  const buffer = await res.buffer();
+  fs.writeFileSync(installerPath, buffer);
+
+  onProgress({ stage: 'installing' });
+  await new Promise((resolve, reject) => {
+    const proc = spawn(javaBinPath, ['-jar', installerPath, '--installServer'], { cwd: serverDir });
+    let stderr = '';
+    proc.stderr.on('data', d => { stderr += d.toString(); });
+    proc.on('close', code => {
+      if (code === 0) resolve();
+      else reject(new Error(`${type} sunucu kurulumu başarısız oldu (kod ${code}): ${stderr.slice(-500)}`));
+    });
+    proc.on('error', reject);
+  });
+
+  try { fs.unlinkSync(installerPath); } catch (err) { /* temizlik, kritik değil */ }
+
+  // Kurulum sonucunu algıla: önce modern run script'i ara
+  const runScript = process.platform === 'win32' ? 'run.bat' : 'run.sh';
+  if (fs.existsSync(path.join(serverDir, runScript))) {
+    if (process.platform !== 'win32') {
+      try { fs.chmodSync(path.join(serverDir, runScript), 0o755); } catch (err) { /* yoksay */ }
+    }
+    onProgress({ stage: 'done' });
+    return { type: 'script', scriptFile: runScript };
+  }
+
+  // Eski Forge (tek jar) ara
+  const files = fs.readdirSync(serverDir);
+  const universalJar = files.find(f => /forge.*universal\.jar$/i.test(f)) || files.find(f => /^forge-.*\.jar$/i.test(f) && !f.includes('installer'));
+  if (universalJar) {
+    onProgress({ stage: 'done' });
+    return { type: 'jar', jarFile: universalJar };
+  }
+
+  throw new Error(`${type} sunucu kurulumu tamamlandı ama çalıştırılabilir dosya bulunamadı (run.sh/run.bat veya universal.jar). Sunucu klasörünü elle kontrol edin: ${serverDir}`);
+}
+
 module.exports = {
   listFabricLoaderVersions,
   listQuiltLoaderVersions,
   installFabric,
   installQuilt,
   installForgeLike,
+  installFabricServer,
+  installQuiltServer,
+  installForgeLikeServer,
   getVersionsRootDir
 };

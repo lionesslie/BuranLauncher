@@ -10,6 +10,7 @@
     "installedMods": "Yüklü Modlar",
     "resources": "Kaynak & Shader",
     "worlds": "Dünyalar",
+    "serverhost": "Sunucu Barındırma",
     "accounts": "Hesaplar",
     "settings": "Ayarlar"
   },
@@ -81,6 +82,45 @@
   },
   "installedMods": {
     "title": "Yüklü Modlar"
+  },
+  "serverhost": {
+    "title": "Sunucu Barındırma",
+    "newServer": "Yeni Sunucu",
+    "empty": "Henüz bir sunucu oluşturmadınız.",
+    "running": "Çalışıyor",
+    "stopped": "Durduruldu",
+    "start": "Başlat",
+    "manage": "Yönet",
+    "started": "Sunucu başlatıldı",
+    "stopping": "Sunucu durduruluyor...",
+    "deleteConfirm": "\"{name}\" sunucusunu kalıcı olarak silmek istediğinize emin misiniz? Tüm dünya verisi silinecek, bu işlem geri alınamaz.",
+    "created": "Sunucu oluşturuldu",
+    "create": "Oluştur",
+    "eulaLabel": "Mojang'ın Son Kullanıcı Lisans Sözleşmesi'ni (EULA) okudum ve kabul ediyorum:",
+    "eulaLink": "www.minecraft.net/eula",
+    "openFolder": "Klasörü Aç",
+    "console": "Konsol",
+    "commandPlaceholder": "Komut yazın (örn: /op KullanıcıAdı)",
+    "send": "Gönder",
+    "properties": "Sunucu Ayarları (server.properties)",
+    "propsRestartHint": "Bu ayarların etkili olması için sunucunun yeniden başlatılması gerekir.",
+    "props": {
+      "port": "Port",
+      "maxPlayers": "Maks. Oyuncu",
+      "gamemode": "Oyun Modu",
+      "difficulty": "Zorluk",
+      "motd": "Sunucu Mesajı (MOTD)",
+      "pvp": "PVP",
+      "onlineMode": "Online Mod (Premium hesap zorunluluğu)",
+      "whitelist": "Beyaz Liste"
+    },
+    "step": {
+      "preparing": "Hazırlanıyor...",
+      "resolving": "Yükleyici sürümü çözümleniyor...",
+      "downloading": "Sunucu dosyaları indiriliyor...",
+      "installing": "Kuruluyor...",
+      "done": "Tamamlandı"
+    }
   },
   "worlds": {
     "title": "Dünyalar",

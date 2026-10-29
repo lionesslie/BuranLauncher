@@ -16,6 +16,7 @@ const launchManager = require('./launchManager');
 const backgroundManager = require('./backgroundManager');
 const worldManager = require('./worldManager');
 const updater = require('./updater');
+const serverManager = require('./serverManager');
 
 function wrap(handler) {
   return async (event, ...args) => {
@@ -180,6 +181,27 @@ function registerIpcHandlers(mainWindow) {
     app.setLoginItemSettings({ openAtLogin: !!updated.startOnBoot });
     return updated;
   }));
+
+  // --- Sunucu Barındırma ---
+  ipcMain.handle('servers:list', wrap(() => serverManager.listServers()));
+  ipcMain.handle('servers:create', wrap((e, data) => {
+    const onProgress = p => mainWindow.webContents.send('servers:createProgress', p);
+    return serverManager.createServer({ ...data, onProgress });
+  }));
+  ipcMain.handle('servers:update', wrap((e, { serverId, patch }) => serverManager.updateServerSettings(serverId, patch)));
+  ipcMain.handle('servers:delete', wrap((e, serverId) => serverManager.deleteServer(serverId)));
+  ipcMain.handle('servers:openFolder', wrap((e, serverId) => serverManager.openServerFolder(serverId)));
+  ipcMain.handle('servers:isRunning', wrap((e, serverId) => serverManager.isRunning(serverId)));
+  ipcMain.handle('servers:getProperties', wrap((e, serverId) => serverManager.getServerProperties(serverId)));
+  ipcMain.handle('servers:setProperties', wrap((e, { serverId, patch }) => serverManager.setServerProperties(serverId, patch)));
+  ipcMain.handle('servers:start', wrap((e, serverId) => {
+    return serverManager.startServer(serverId, {
+      onLog: line => mainWindow.webContents.send('servers:log', { serverId, line }),
+      onClose: code => mainWindow.webContents.send('servers:closed', { serverId, code })
+    });
+  }));
+  ipcMain.handle('servers:stop', wrap((e, serverId) => serverManager.stopServer(serverId)));
+  ipcMain.handle('servers:sendCommand', wrap((e, { serverId, command }) => serverManager.sendCommand(serverId, command)));
 
   // --- Otomatik güncelleme ---
   ipcMain.handle('updater:check', wrap(() => updater.checkForUpdates()));

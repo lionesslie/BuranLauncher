@@ -19,7 +19,8 @@ const store = new Store({
     },
     accounts: [], // {id, type: 'offline'|'microsoft', username, uuid, encryptedToken?}
     activeAccountId: null,
-    instances: [] // {id, name, icon, version, versionType, loader, loaderVersion, createdAt, lastPlayed, totalPlaytimeMs}
+    instances: [], // {id, name, icon, version, versionType, loader, loaderVersion, createdAt, lastPlayed, totalPlaytimeMs}
+    servers: [] // {id, name, version, loader, loaderVersion, ramMin, ramMax, launchCommand, createdAt, lastStarted}
   }
 });
 
