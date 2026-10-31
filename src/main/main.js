@@ -18,6 +18,33 @@ let mainWindow = null;
 let tray = null;
 let isQuitting = false;
 
+// --- Tek örnek (single instance) kilidi ---
+// BU BLOK, UYGULAMANIN EN BAŞINDA, app.whenReady()'den ÖNCE olmalı.
+// Olmadığı için launcher tepsiye küçültülüp exe tekrar çalıştırıldığında
+// (veya kısayola tekrar tıklandığında) her seferinde YENİ bir arkaplan
+// süreci başlıyordu — bu, bildirdiğiniz "sınırsız kopya" hatasının
+// doğrudan sebebiydi.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  // Bu zaten bir örnek çalışıyor demektir: bu ikinci süreç hiçbir pencere
+  // açmadan hemen kapanır, birinci süreç 'second-instance' olayını alır.
+  // (Node, her dosyayı bir fonksiyona sardığından top-level "return" burada
+  // geçerlidir ve dosyanın geri kalanının bu süreçte çalışmasını engeller.)
+  app.quit();
+  return;
+} else {
+  app.on('second-instance', () => {
+    // Kullanıcı launcher'ı tekrar açmaya çalıştı: yeni pencere açmak yerine
+    // mevcut pencereyi öne getir (tepsideyse/simge durumundaysa geri getir).
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,

@@ -20,6 +20,21 @@
   font-weight: 600;
 }
 
+/* NOT: Gerçek Minecraft piksel fontu DEĞİL — Liberation Mono'dan (SIL OFL,
+   TR/RU tam destekli) türetilmiş geçici bir "blok karakterli" vekildir.
+   Gerçek bir piksel font (Minecraftia/Monocraft) edinip aynı dosya
+   adlarıyla üzerine yazarsanız otomatik devreye girer. Bkz. assets/fonts/LICENSE.txt */
+@font-face {
+  font-family: 'MCFont';
+  src: url('../../../assets/fonts/MCFont-Regular.ttf') format('truetype');
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'MCFont';
+  src: url('../../../assets/fonts/MCFont-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
 :root {
   --bg-0: #0d0f13;
   --bg-1: #171a21;
@@ -50,8 +65,9 @@ html, body {
   height: 100%;
   background: transparent;
   color: var(--text-hi);
-  font-family: 'Inter', -apple-system, system-ui, sans-serif;
-  font-size: 14px;
+  font-family: 'MCFont', 'Inter', -apple-system, system-ui, monospace;
+  font-size: 13px;
+  letter-spacing: 0.2px;
   overflow: hidden;
   user-select: none;
 }
@@ -100,7 +116,12 @@ html, body {
   height: 42px;
   display: flex;
   align-items: center;
-  background: rgba(23, 26, 33, 0.58);
+  background:
+    url('../../../assets/textures/stone.png'),
+    rgba(23, 26, 33, 0.58);
+  background-size: 32px 32px, auto;
+  background-repeat: repeat, no-repeat;
+  image-rendering: pixelated;
   backdrop-filter: blur(22px) saturate(150%);
   -webkit-backdrop-filter: blur(22px) saturate(150%);
   -webkit-app-region: drag;
@@ -151,7 +172,12 @@ html, body {
 
 .sidebar {
   width: 88px;
-  background: rgba(23, 26, 33, 0.5);
+  background:
+    url('../../../assets/textures/stone.png'),
+    rgba(23, 26, 33, 0.5);
+  background-size: 32px 32px, auto;
+  background-repeat: repeat, no-repeat;
+  image-rendering: pixelated;
   backdrop-filter: blur(22px) saturate(150%);
   -webkit-backdrop-filter: blur(22px) saturate(150%);
   border-right: 1px solid var(--border-soft);
@@ -230,31 +256,50 @@ h1.page-title {
 }
 .subtle { color: var(--text-mid); font-size: 13px; }
 
+/* ---------- Klasik Minecraft "taş buton" ---------- */
 .btn {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff; border: none; border-radius: 9px;
-  padding: 9px 16px; font-size: 13px; font-weight: 600;
+  position: relative;
+  background: #6d8f58; /* yeşilimsi taş (primary) */
+  color: #fff;
+  border: 2px solid #161616;
+  border-radius: 2px;
+  padding: 9px 16px;
+  font-family: 'MCFont', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.45);
   cursor: pointer;
-  position: relative; overflow: hidden;
-  transition: transform 160ms var(--ease-pop), box-shadow 200ms ease, filter 160ms ease;
-  box-shadow: 0 2px 10px rgba(91,171,62,0.18);
+  box-shadow:
+    inset 2px 2px 0 0 rgba(255,255,255,0.28),
+    inset -2px -2px 0 0 rgba(0,0,0,0.35);
+  transition: filter 100ms ease, padding 60ms ease;
 }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px var(--accent-glow); filter: brightness(1.07); }
-.btn:active { transform: translateY(0) scale(0.97); }
-.btn.secondary {
-  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-hi);
-  box-shadow: none;
+.btn:hover { filter: brightness(1.18); }
+.btn:active {
+  filter: brightness(0.9);
+  box-shadow:
+    inset -2px -2px 0 0 rgba(255,255,255,0.18),
+    inset 2px 2px 0 0 rgba(0,0,0,0.4);
+  padding-top: 10px; padding-bottom: 8px;
 }
-.btn.secondary:hover { background: var(--bg-3); border-color: rgba(91,171,62,0.4); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
-.btn.danger {
-  background: transparent; border: 1px solid var(--danger); color: var(--danger);
-  box-shadow: none;
+.btn.secondary { background: #8b8b8b; } /* klasik gri taş */
+.btn.danger { background: #a3453f; } /* kırmızımsı taş */
+.btn:disabled {
+  opacity: 0.5; cursor: not-allowed; filter: grayscale(0.5) !important;
+  box-shadow:
+    inset 2px 2px 0 0 rgba(255,255,255,0.15),
+    inset -2px -2px 0 0 rgba(0,0,0,0.35) !important;
+  padding: 9px 16px !important;
 }
-.btn.danger:hover { background: rgba(239,68,68,0.12); box-shadow: 0 4px 14px rgba(239,68,68,0.15); }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; filter: none !important; }
 
 .card {
-  background: rgba(23, 26, 33, 0.62);
+  background:
+    url('../../../assets/textures/wood.png'),
+    rgba(23, 26, 33, 0.62);
+  background-size: 28px 28px, auto;
+  background-repeat: repeat, no-repeat;
+  image-rendering: pixelated;
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid var(--border-soft);
@@ -336,7 +381,12 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
   display: flex; align-items: center; gap: 12px;
   padding: 12px; border: 1px solid var(--border-soft); border-radius: var(--radius);
   margin-bottom: 8px;
-  background: rgba(23, 26, 33, 0.55);
+  background:
+    url('../../../assets/textures/stone.png'),
+    rgba(23, 26, 33, 0.55);
+  background-size: 24px 24px, auto;
+  background-repeat: repeat, no-repeat;
+  image-rendering: pixelated;
   backdrop-filter: blur(14px) saturate(130%);
   -webkit-backdrop-filter: blur(14px) saturate(130%);
   transition: transform 200ms var(--ease-pop), border-color 200ms ease, background 200ms ease;
@@ -439,7 +489,7 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
   padding: 1px 6px; border-radius: 4px; background: var(--bg-2); color: var(--text-mid);
   text-transform: uppercase;
 }
-.log-entry-message { color: var(--text-mid); word-break: break-word; font-family: 'Inter', sans-serif; font-size: 11.5px; }
+.log-entry-message { color: var(--text-mid); word-break: break-word; font-family: 'MCFont', monospace; font-size: 11.5px; }
 .log-entry-icon { flex-shrink: 0; width: 13px; height: 13px; }
 .log-entry-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 

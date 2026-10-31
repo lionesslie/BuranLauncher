@@ -12,3 +12,12 @@ yeniden dağıtılmasına izin verir (fontun tek başına satılması hariç).
 Gerçek Inter fontunu (https://rsms.me/inter/, SIL OFL 1.1) edinip aynı
 dosya adlarıyla bu klasöre koyduğunuzda, bu geçici fontun yerini alır.
 Gerçek Inter fontunun kendi LICENSE.txt dosyasını da eklemeniz önerilir.
+
+---
+MCFont-Regular.ttf / MCFont-Bold.ttf de aynı şekilde GEÇİCİ bir vekildir —
+gerçek Minecraft fontu (Minecraftia/Monocraft tarzı piksel font) DEĞİLDİR.
+Liberation Mono'dan (yine SIL OFL 1.1, yukarıdaki lisans) türetilmiştir;
+monospace/blok karakter yapısı sayesinde "piksel/retro" hissi verir ama
+gerçek pixel-perfect Minecraft glyph'leri değildir. Gerçek bir Minecraft
+fontu (örn. community "Minecraftia" veya "Monocraft", ikisi de ücretsiz
+dağıtılabilir) edinip aynı dosya adlarıyla üzerine yazabilirsiniz.
