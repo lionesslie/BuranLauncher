@@ -14,20 +14,20 @@
     "build": "electron-builder --win --linux"
   },
   "dependencies": {
-    "@xhayper/discord-rpc": "latest",
-    "adm-zip": "^0.5.12",
     "dotenv": "^16.4.5",
-    "electron-log": "^5.1.5",
     "electron-store": "^8.2.0",
-    "electron-updater": "^6.3.9",
-    "extract-zip": "^2.0.1",
+    "electron-log": "^5.1.5",
     "minecraft-launcher-core": "^3.18.1",
     "msmc": "latest",
+    "@xhayper/discord-rpc": "latest",
+    "electron-updater": "^6.3.9",
     "node-fetch": "^2.7.0",
+    "extract-zip": "^2.0.1",
+    "adm-zip": "^0.5.12",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "electron": "^30.5.1",
+    "electron": "^30.0.0",
     "electron-builder": "^24.13.3"
   },
   "build": {
@@ -50,18 +50,8 @@
     ],
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
       ],
       "icon": "assets/icons/icon.ico"
     },
@@ -74,24 +64,11 @@
     },
     "linux": {
       "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
       ],
       "icon": "assets/icons/icon.png",
       "category": "Game"
     }
-  },
-  "allowScripts": {
-    "electron@30.5.1": true
   }
 }

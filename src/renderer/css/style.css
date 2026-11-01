@@ -122,8 +122,6 @@ html, body {
   background-size: 32px 32px, auto;
   background-repeat: repeat, no-repeat;
   image-rendering: pixelated;
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
   -webkit-app-region: drag;
   border-bottom: 1px solid var(--border-soft);
   position: relative;
@@ -178,8 +176,6 @@ html, body {
   background-size: 32px 32px, auto;
   background-repeat: repeat, no-repeat;
   image-rendering: pixelated;
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
   border-right: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
@@ -300,8 +296,6 @@ h1.page-title {
   background-size: 28px 28px, auto;
   background-repeat: repeat, no-repeat;
   image-rendering: pixelated;
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   padding: 16px;
@@ -387,8 +381,6 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
   background-size: 24px 24px, auto;
   background-repeat: repeat, no-repeat;
   image-rendering: pixelated;
-  backdrop-filter: blur(14px) saturate(130%);
-  -webkit-backdrop-filter: blur(14px) saturate(130%);
   transition: transform 200ms var(--ease-pop), border-color 200ms ease, background 200ms ease;
   animation: cardEnter 360ms var(--ease-smooth) backwards;
 }
@@ -416,8 +408,6 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
 .log-panel {
   position: fixed; left: 88px; right: 0; bottom: 0;
   background: rgba(17,19,24,0.74);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border-top: 1px solid var(--border-soft);
   height: 280px;
   /* calc tabanlı: panel kapalıyken SADECE 1. satır (başlık+butonlar, ~36px)
@@ -520,8 +510,6 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
 .toast-container { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 200; }
 .toast {
   background: rgba(23, 26, 33, 0.75);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--border-soft); border-left: 3px solid var(--accent);
   border-radius: 9px; padding: 10px 14px; font-size: 13px; min-width: 220px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.4);
@@ -537,8 +525,6 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
 /* ---------- Modal ---------- */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(5,6,8,0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   display: none; align-items: center; justify-content: center; z-index: 150;
   animation: overlayIn 220ms ease;
 }
@@ -546,8 +532,6 @@ label { font-size: 12px; color: var(--text-mid); display: block; margin-bottom: 
 .modal-overlay.open { display: flex; }
 .modal {
   background: rgba(26,29,36,0.72);
-  backdrop-filter: blur(26px) saturate(160%);
-  -webkit-backdrop-filter: blur(26px) saturate(160%);
   border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
   padding: 24px; width: 420px; max-width: 90vw; max-height: 85vh; overflow-y: auto;
   box-shadow: 0 24px 60px rgba(0,0,0,0.5);
