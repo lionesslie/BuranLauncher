@@ -45,7 +45,7 @@
     "create": "Oluştur",
     "cancel": "İptal",
     "save": "Kaydet",
-    "loaderNone": "Yok (Vanilla)",
+    "loaderNone": "Vanilla",
     "versionType": {
       "release": "Sürüm",
       "snapshot": "Anlık Görüntü",

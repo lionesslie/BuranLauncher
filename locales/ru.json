@@ -45,7 +45,7 @@
     "create": "Создать",
     "cancel": "Отмена",
     "save": "Сохранить",
-    "loaderNone": "Нет (Vanilla)",
+    "loaderNone": "Vanilla",
     "versionType": {
       "release": "Релиз",
       "snapshot": "Снапшот",

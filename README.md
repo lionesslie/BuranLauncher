@@ -1,19 +1,43 @@
 # Buran Launcher
 
-Electron tabanlı, Minecraft Launcher.
+Backend'i tamamen Rust/Tauri v2 olan Minecraft launcher. Electron tabanlı eski backend (`src/main`, `src/preload`) kaldırılmıştır.
+
+## Gereksinimler
+
+- [Node.js](https://nodejs.org/) ve npm
+- [Rust](https://www.rust-lang.org/tools/install)
+- Windows'ta WebView2 (Windows 10/11'de genellikle hazır)
+- Linux'ta Tauri sistem bağımlılıkları (`webkit2gtk-4.1`, `libappindicator3`, `librsvg2` vb.)
 
 ## Kurulum ve Çalıştırma
+
 ```bash
 npm install
-npm start
+npm run dev
 ```
 
-## Paketleme (installer üretme)
+Uygulama verileri `%APPDATA%\com.buranlauncher.app` altında tutulur.
+
+## Proje Yapısı
+
+- `src-tauri/`: Rust/Tauri backend ve uygulama yapılandırması
+- `src/renderer/`: Tauri arayüzü (HTML/CSS/JS)
+- `assets/`, `locales/`: Statik kaynaklar
+
+## Paketleme
 
 ```bash
-npm run build:win     # Windows: NSIS kurulum + portable .exe
+npm run build:win     # Windows: NSIS kurulum
 npm run build:linux   # Linux: AppImage + .deb
-npm run build         # ikisi birden
+npm run build         # Platformun varsayılan paketleri
 ```
-Çıktılar `dist/` klasöründe oluşur.
 
+Çıktılar `src-tauri/target/release/bundle/` altında oluşur.
+
+## Ortam Değişkenleri
+
+`.env` dosyasına (isteğe bağlı):
+
+- `DISCORD_CLIENT_ID`: Discord Rich Presence için uygulama kimliği.
+- `BURAN_GITHUB_REPO`: Güncelleme kontrolü için `kullanici/repo` biçiminde GitHub deposu.
+- `MS_CLIENT_ID`: Microsoft girişi için özel Azure client ID'si.
