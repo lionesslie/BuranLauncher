@@ -39,6 +39,125 @@ fn param_u64(params: &Value, key: &str, fallback: u64) -> u64 {
     params.get(key).and_then(Value::as_u64).unwrap_or(fallback)
 }
 
+/// Java sürümünü gerçekten çalıştırıp öğrenir: `<java> -version` çıktısındaki
+/// `version "25.0.5"` kalıbından sürümü döndürür.
+fn probe_java_version(exe: &std::path::Path) -> Option<String> {
+    let mut command = std::process::Command::new(exe);
+    command.arg("-version");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    let output = command.output().ok()?;
+    let text = String::from_utf8_lossy(&output.stderr);
+    let marker = "version \"";
+    let start = text.find(marker)? + marker.len();
+    let rest = &text[start..];
+    let end = rest.find('"')?;
+    let version = rest[..end].trim().to_string();
+    if version.is_empty() {
+        None
+    } else {
+        Some(version)
+    }
+}
+
+/// Ayarlardaki yol → kurulu (cache'lenmiş) JDK → sistem Java'sı sırasıyla
+/// kullanılabilir bir java çalıştırılabilir dosyası bulur.
+fn resolve_java_candidates(store: &Store, paths: &AppPaths) -> Vec<std::path::PathBuf> {
+    let java_exe = if cfg!(windows) { "java.exe" } else { "java" };
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+    let configured = store.get_setting_string("javaPath").unwrap_or_default();
+    if !configured.is_empty() {
+        let path = std::path::PathBuf::from(&configured);
+        if path.is_file() {
+            candidates.push(path);
+        } else {
+            candidates.push(path.join("bin").join(java_exe));
+            candidates.push(path.join(java_exe));
+        }
+    }
+    if let Ok(entries) = std::fs::read_dir(paths.java_root()) {
+        let mut dirs: Vec<std::path::PathBuf> = entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect();
+        dirs.sort();
+        for dir in dirs {
+            candidates.push(dir.join("bin").join(java_exe));
+        }
+    }
+    if let Some(system_java) = java_manager::detect_system_java() {
+        candidates.push(std::path::PathBuf::from(system_java));
+    }
+    candidates
+}
+
+async fn install_loader_after_import(
+    app: &AppHandle,
+    store: &Store,
+    paths: &AppPaths,
+    instance: &Value,
+) -> Result<(), String> {
+    let loader = instance
+        .get("loader")
+        .and_then(Value::as_str)
+        .unwrap_or("vanilla");
+    let loader_version = instance
+        .get("loaderVersion")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let mc_version = instance
+        .get("version")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if loader == "vanilla" || loader_version.is_empty() || mc_version.is_empty() {
+        return Ok(());
+    }
+    let profile_id = match loader {
+        "fabric" => format!("fabric-loader-{loader_version}-{mc_version}"),
+        "quilt" => format!("quilt-loader-{loader_version}-{mc_version}"),
+        "forge" => format!("{mc_version}-forge-{loader_version}"),
+        "neoforge" if mc_version == "1.20.1" => {
+            format!("{mc_version}-forge-{loader_version}")
+        }
+        "neoforge" => format!("neoforge-{loader_version}"),
+        _ => return Ok(()),
+    };
+    if paths.version_json_path(&profile_id).exists() {
+        return Ok(());
+    }
+    match loader {
+        "fabric" => {
+            let _ = loader_manager::install_fabric(paths, app, mc_version, loader_version).await?;
+        }
+        "quilt" => {
+            let _ = loader_manager::install_quilt(paths, app, mc_version, loader_version).await?;
+        }
+        "forge" | "neoforge" => {
+            let java_path = store
+                .get_setting_string("javaPath")
+                .filter(|path| !path.trim().is_empty())
+                .or_else(java_manager::detect_system_java)
+                .or_else(|| {
+                    java_manager::find_cached_java(
+                        paths,
+                        java_manager::required_java_version_for_mc(mc_version),
+                    )
+                    .map(|path| path.to_string_lossy().to_string())
+                })
+                .ok_or_else(|| "Yükleyici kurulumu için Java gerekli".to_string())?;
+            let _ =
+                loader_manager::install_forge_like(paths, app, loader, mc_version, loader_version, &java_path)
+                    .await?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 fn emit_progress_with_ids(
     app: &AppHandle,
     event: &str,
@@ -280,6 +399,18 @@ pub async fn buran_invoke(
             )
             .await
             .map(|_| json!(true))
+            .map_err(|err| {
+                let _ = app.emit(
+                    "modrinth:progress",
+                    json!({
+                        "stage": "error",
+                        "message": err,
+                        "projectId": project_for_progress,
+                        "instanceId": instance_for_progress
+                    }),
+                );
+                err
+            })
         }
         "modrinth:listInstalled" => {
             let instance_id = arg_string(&args, 0).unwrap_or_default();
@@ -328,6 +459,18 @@ pub async fn buran_invoke(
             )
             .await
             .map(|_| json!(true))
+            .map_err(|err| {
+                let _ = app.emit(
+                    "modrinth:progress",
+                    json!({
+                        "stage": "error",
+                        "message": err,
+                        "projectId": project_for_progress,
+                        "instanceId": instance_for_progress
+                    }),
+                );
+                err
+            })
         }
         "modrinth:searchContent" => {
             let params = arg(&args, 0);
@@ -373,6 +516,18 @@ pub async fn buran_invoke(
             )
             .await
             .map(|_| json!(true))
+            .map_err(|err| {
+                let _ = app.emit(
+                    "modrinth:progress",
+                    json!({
+                        "stage": "error",
+                        "message": err,
+                        "projectId": project_for_progress,
+                        "instanceId": instance_for_progress
+                    }),
+                );
+                err
+            })
         }
         "modrinth:listInstalledContent" => {
             let params = arg(&args, 0);
@@ -412,7 +567,7 @@ pub async fn buran_invoke(
             let params = arg(&args, 0);
             let project_id = param_string(&params, "projectId").unwrap_or("");
             let version_id = param_string(&params, "versionId").map(ToString::to_string);
-            modrinth::install_modpack_from_project(
+            let instance = modrinth::install_modpack_from_project(
                 &paths,
                 &store,
                 project_id,
@@ -421,7 +576,9 @@ pub async fn buran_invoke(
                     let _ = app.emit("modpack:progress", payload);
                 },
             )
-            .await
+            .await?;
+            install_loader_after_import(&app, &store, &paths, &instance).await?;
+            Ok(instance)
         }
         "modrinth:installModpackFile" => {
             let Some(file) = app
@@ -433,17 +590,18 @@ pub async fn buran_invoke(
                 return Ok(Value::Null);
             };
             let path = file.into_path().map_err(|err| err.to_string())?;
-            modrinth::install_modpack_from_file(&paths, &store, &path, &|payload| {
+            let instance = modrinth::install_modpack_from_file(&paths, &store, &path, &|payload| {
                 let _ = app.emit("modpack:progress", payload);
             })
-            .await
+            .await?;
+            install_loader_after_import(&app, &store, &paths, &instance).await?;
+            Ok(instance)
         }
 
         "java:detect" => Ok(match java_manager::detect_system_java() {
             Some(path) => Value::String(path),
             None => Value::Null,
-        }),
-        "java:browse" => {
+        }),        "java:browse" => {
             let Some(file) = app.dialog().file().blocking_pick_file() else {
                 return Ok(Value::Null);
             };
@@ -456,6 +614,66 @@ pub async fn buran_invoke(
             store.update_settings(&json!({ "javaPath": java_path }));
             Ok(Value::String(java_path))
         }
+
+        "app:status" => Ok(json!({
+            "ramMin": store.get_setting("ramMin"),
+            "ramMax": store.get_setting("ramMax"),
+            "javaPath": store.get_setting_string("javaPath").unwrap_or_default(),
+            "gameDir": paths.minecraft_root().to_string_lossy(),
+            "version": updater::get_current_version()
+        })),
+        // Gerçek sistem RAM bilgisi (toplam / kullanılan, bayt)
+        "system:memory" => {
+            fn memory_snapshot() -> (u64, u64) {
+                static SYSTEM: std::sync::OnceLock<
+                    std::sync::Mutex<sysinfo::System>,
+                > = std::sync::OnceLock::new();
+                let mut guard = SYSTEM
+                    .get_or_init(|| std::sync::Mutex::new(sysinfo::System::new()))
+                    .lock()
+                    .unwrap();
+                guard.refresh_memory();
+                (guard.total_memory(), guard.used_memory())
+            }
+            let (total, used) = memory_snapshot();
+            Ok(json!({ "total": total, "used": used }))
+        }
+        // Etkin Java sürümü: ayarlanan yol veya kurulu JDK gerçekten
+        // çalıştırılarak öğrenilir.
+        "java:version" => {
+            let mut found = Value::Null;
+            for candidate in resolve_java_candidates(&store, &paths) {
+                if candidate.is_file() {
+                    if let Some(version) = probe_java_version(&candidate) {
+                        found = json!({
+                            "path": candidate.to_string_lossy(),
+                            "version": version
+                        });
+                        break;
+                    }
+                }
+            }
+            Ok(found)
+        }
+        // Klasörü Windows Gezgininde açar (yalnızca mevcut dizinler).
+        "app:openPath" => {
+            let path = arg_string(&args, 0).unwrap_or_default();
+            let dir = std::path::PathBuf::from(&path);
+            if !dir.is_dir() {
+                return Err("Geçersiz klasör".to_string());
+            }
+            open::that(&dir).map_err(|err| format!("Klasör açılamadı: {err}"))?;
+            Ok(Value::Null)
+        }
+        "app:openUrl" => {
+            let url = arg_string(&args, 0).unwrap_or_default();
+            if !(url.starts_with("https://") || url.starts_with("http://")) {
+                return Err("Geçersiz URL".to_string());
+            }
+            open::that(&url).map_err(|err| format!("Bağlantı açılamadı: {err}"))?;
+            Ok(Value::Null)
+        }
+        "news:list" => updater::list_releases(5).await,
 
         "settings:get" => Ok(store.settings()),
         "settings:set" => {

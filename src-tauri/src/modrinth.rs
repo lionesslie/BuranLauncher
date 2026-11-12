@@ -11,6 +11,20 @@ use zip::ZipArchive;
 
 const API_BASE: &str = "https://api.modrinth.com/v2";
 
+/// Projenin gerçek görünen adını çeker (best-effort; hata olursa None döner).
+async fn project_title(id_or_slug: &str) -> Option<String> {
+    api_get(&format!("/project/{id_or_slug}"))
+        .await
+        .ok()
+        .and_then(|project| {
+            project
+                .get("title")
+                .and_then(Value::as_str)
+                .map(ToString::to_string)
+                .filter(|title| !title.trim().is_empty())
+        })
+}
+
 async fn api_get(endpoint: &str) -> Result<Value, String> {
     http::get_json(&format!("{API_BASE}{endpoint}"))
         .await
@@ -250,7 +264,7 @@ where
             project_id.clone(),
             json!({
                 "projectId": project_id,
-                "title": id_or_slug,
+                "title": project_title(&project_id).await.unwrap_or_else(|| id_or_slug.to_string()),
                 "filename": filename,
                 "versionId": version.get("id").cloned().unwrap_or(Value::Null),
                 "versionNumber": version.get("version_number").cloned().unwrap_or(Value::Null),
@@ -353,7 +367,7 @@ where
         project_id.clone(),
         json!({
             "projectId": project_id,
-            "title": project_id_or_slug,
+            "title": project_title(&project_id).await.unwrap_or_else(|| project_id_or_slug.to_string()),
             "filename": filename,
             "versionId": version.get("id").cloned().unwrap_or(Value::Null),
             "versionNumber": version.get("version_number").cloned().unwrap_or(Value::Null),
@@ -390,16 +404,122 @@ pub fn list_installed_mods(paths: &AppPaths, instance_id: &str) -> Value {
         let matched = meta_by_filename
             .get(&base_filename)
             .or_else(|| meta_by_filename.get(&filename));
+        // Gerçek ad önceliği: jar içi meta (fabric.mod.json / mods.toml /
+        // mcmod.info) > kayıtlı Modrinth meta > dosya adı. Jar içi bilgi,
+        // launcher dışından gelmiş ya da meta'da ID kayıtlı modları da düzeltir.
+        let (jar_title, jar_version) = read_jar_metadata(&entry.path());
+        let title = jar_title.or_else(|| {
+            matched
+                .and_then(|entry| entry.get("title"))
+                .and_then(Value::as_str)
+                .map(ToString::to_string)
+        }).unwrap_or_else(|| base_filename.trim_end_matches(".jar").to_string());
+        let version_number = matched
+            .and_then(|entry| entry.get("versionNumber"))
+            .and_then(Value::as_str)
+            .map(ToString::to_string)
+            .or(jar_version);
         result.push(json!({
             "filename": filename,
             "enabled": !filename.ends_with(".disabled"),
             "path": entry.path().to_string_lossy().to_string(),
             "projectId": matched.and_then(|entry| entry.get("projectId")).cloned().unwrap_or(Value::Null),
-            "title": matched.and_then(|entry| entry.get("title")).cloned().unwrap_or_else(|| json!(base_filename.trim_end_matches(".jar"))),
-            "versionNumber": matched.and_then(|entry| entry.get("versionNumber")).cloned().unwrap_or(Value::Null)
+            "title": title,
+            "versionNumber": version_number.map(Value::String).unwrap_or(Value::Null)
         }));
     }
     Value::Array(result)
+}
+
+/// Jar içinden modun gerçek adını/versiyonunu okur:
+/// fabric.mod.json (Fabric/Quilt), neoforge.mods.toml / mods.toml (Forge/NeoForge), mcmod.info.
+fn read_jar_metadata(path: &Path) -> (Option<String>, Option<String>) {
+    let Ok(file) = File::open(path) else {
+        return (None, None);
+    };
+    let Ok(mut archive) = ZipArchive::new(file) else {
+        return (None, None);
+    };
+
+    if let Ok(mut entry) = archive.by_name("fabric.mod.json") {
+        let mut raw = String::new();
+        if entry.read_to_string(&mut raw).is_ok() {
+            if let Ok(value) = serde_json::from_str::<Value>(&raw) {
+                let name = value
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .or_else(|| value.get("id").and_then(Value::as_str))
+                    .map(ToString::to_string)
+                    .filter(|name| !name.trim().is_empty());
+                let version = value
+                    .get("version")
+                    .and_then(Value::as_str)
+                    .map(ToString::to_string)
+                    .filter(|version| !version.trim().is_empty());
+                if let Some(name) = name {
+                    return (Some(name), version);
+                }
+            }
+        }
+    }
+
+    for toml_path in ["META-INF/neoforge.mods.toml", "META-INF/mods.toml"] {
+        if let Ok(mut entry) = archive.by_name(toml_path) {
+            let mut raw = String::new();
+            if entry.read_to_string(&mut raw).is_ok() {
+                let name = toml_value_of(&raw, "displayName").or_else(|| toml_value_of(&raw, "modId"));
+                let version = toml_value_of(&raw, "version");
+                if let Some(name) = name {
+                    return (Some(name), version);
+                }
+            }
+        }
+    }
+
+    if let Ok(mut entry) = archive.by_name("mcmod.info") {
+        let mut raw = String::new();
+        if entry.read_to_string(&mut raw).is_ok() {
+            if let Ok(value) = serde_json::from_str::<Value>(&raw) {
+                let list = value.as_array().cloned().unwrap_or_default();
+                if let Some(first) = list.first() {
+                    let name = first
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .map(ToString::to_string)
+                        .filter(|name| !name.trim().is_empty());
+                    let version = first
+                        .get("version")
+                        .and_then(Value::as_str)
+                        .map(ToString::to_string);
+                    if let Some(name) = name {
+                        return (Some(name), version);
+                    }
+                }
+            }
+        }
+    }
+
+    (None, None)
+}
+
+/// mods.toml tarzı dosyalarda `key = "değer"` satırından değeri çıkarır.
+fn toml_value_of(raw: &str, key: &str) -> Option<String> {
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix(key) {
+            if let Some(after_eq) = rest.trim_start().strip_prefix('=') {
+                let val = after_eq.trim();
+                if let Some(unquoted) = val.strip_prefix('"').and_then(|value| value.strip_suffix('"')) {
+                    return Some(unquoted.to_string());
+                }
+                if let Some(unquoted) = val.strip_prefix('\'').and_then(|value| value.strip_suffix('\'')) {
+                    return Some(unquoted.to_string());
+                }
+                return Some(val.to_string());
+            }
+        }
+    }
+    None
 }
 
 pub fn toggle_mod(

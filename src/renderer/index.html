@@ -8,15 +8,8 @@
 </head>
 <body>
 
-  <!-- Arkaplan katmanı: Ayarlar'dan değiştirilebilir/kapatılabilir -->
-  <div id="bg-layer"></div>
-
   <!-- Özel Title Bar -->
   <div class="titlebar">
-    <div class="titlebar-account" id="titlebar-account">
-      <div class="account-avatar" id="titlebar-avatar"></div>
-      <span id="titlebar-username">—</span>
-    </div>
     <div class="titlebar-drag"></div>
     <div class="titlebar-controls">
       <button class="win-btn" id="btn-minimize" title="Simge durumuna küçült">&#8211;</button>
@@ -28,7 +21,13 @@
   <div class="app-shell">
     <!-- Sidebar -->
     <nav class="sidebar">
-      <div class="sidebar-logo">Buran</div>
+      <div class="sidebar-logo">
+        <img class="logo-block" src="assets/icons/rocket.png" alt="Buran" draggable="false" />
+        <div class="logo-text">
+          <span class="logo-name">Buran Launcher</span>
+          <span class="logo-sub">Minecraft Launcher</span>
+        </div>
+      </div>
       <ul class="sidebar-nav">
         <li data-page="home" class="active"><span class="icon" data-icon="home"></span><span class="label" data-i18n="sidebar.home"></span></li>
         <li data-page="profiles"><span class="icon" data-icon="layout-grid"></span><span class="label" data-i18n="sidebar.profiles"></span></li>
@@ -41,6 +40,14 @@
         <li data-page="accounts"><span class="icon" data-icon="users"></span><span class="label" data-i18n="sidebar.accounts"></span></li>
         <li data-page="settings"><span class="icon" data-icon="settings"></span><span class="label" data-i18n="sidebar.settings"></span></li>
       </ul>
+      <div class="sidebar-account" id="sidebar-account" data-no-drag title="">
+        <div class="account-avatar" id="sidebar-avatar"></div>
+        <div class="account-meta">
+          <div class="account-name" id="sidebar-username">&mdash;</div>
+          <div class="account-status" id="sidebar-status"></div>
+        </div>
+        <span class="account-chevron" data-icon="chevron-down"></span>
+      </div>
     </nav>
 
     <!-- Ana içerik -->
@@ -57,6 +64,25 @@
       <section id="page-settings" class="page"></section>
     </main>
   </div>
+
+  <!-- Alt durum çubuğu -->
+  <footer class="status-bar" id="status-bar">
+    <div class="status-item" id="status-ram">
+      <span class="icon" data-icon="cpu"></span><span id="status-ram-text">&mdash;</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item" id="status-java">
+      <span class="icon" data-icon="coffee"></span><span id="status-java-text">&mdash;</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item" id="status-dir" title="">
+      <span class="icon" data-icon="hard-drive"></span><span id="status-dir-text">&mdash;</span>
+    </div>
+    <div class="status-spacer"></div>
+    <div class="status-item status-state" id="status-state">
+      <span class="icon" data-icon="bar-chart"></span><span id="status-state-text">&mdash;</span>
+    </div>
+  </footer>
 
   <!-- Log paneli (alt açılır) -->
   <div class="log-panel" id="log-panel">

@@ -57,6 +57,9 @@
     versions: {
       list: function (type) { return invoke('versions:list', type); }
     },
+    system: {
+      memory: function () { return invoke('system:memory'); }
+    },
     loader: {
       fabricVersions: function () { return invoke('loader:fabricVersions'); },
       quiltVersions: function () { return invoke('loader:quiltVersions'); },
@@ -120,6 +123,7 @@
     },
     java: {
       detect: function () { return invoke('java:detect'); },
+      version: function () { return invoke('java:version'); },
       browse: function () { return invoke('java:browse'); },
       download: function (majorVersion) { return invoke('java:download', majorVersion); },
       onProgress: function (callback) { on('java:progress', callback); }
@@ -157,6 +161,14 @@
       install: function () { return invoke('updater:install'); },
       getVersion: function () { return invoke('updater:getVersion'); },
       onStatus: function (callback) { on('updater:status', callback); }
+    },
+    app: {
+      status: function () { return invoke('app:status'); },
+      openPath: function (path) { return invoke('app:openPath', path); },
+      openUrl: function (url) { return invoke('app:openUrl', url); }
+    },
+    news: {
+      list: function () { return invoke('news:list'); }
     },
     worlds: {
       list: function (instanceId) { return invoke('worlds:list', instanceId); },

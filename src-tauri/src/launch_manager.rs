@@ -2,6 +2,7 @@ use crate::auth::{self, MclcAuth};
 use crate::http;
 use crate::instance_manager;
 use crate::java_manager;
+use crate::loader_manager;
 use crate::paths::AppPaths;
 use crate::store::Store;
 use crate::version_manager;
@@ -403,6 +404,24 @@ async fn prepare_client(
     fs::create_dir_all(&library_dir).map_err(|err| format!("Klasör oluşturulamadı: {err}"))?;
     fs::create_dir_all(&assets_dir).map_err(|err| format!("Klasör oluşturulamadı: {err}"))?;
     fs::create_dir_all(&natives_dir).map_err(|err| format!("Klasör oluşturulamadı: {err}"))?;
+    // Modern sürümler natives dosyalarını ${natives_directory}/java gibi bir alt
+    // dizine koyar; sürüm tanımındaki java.library.path argümanından çıkar.
+    let natives_extract_dir = version
+        .pointer("/arguments/jvm")
+        .and_then(Value::as_array)
+        .and_then(|args| {
+            args.iter()
+                .filter_map(Value::as_str)
+                .find(|arg| {
+                    arg.contains("java.library.path") && arg.contains("${natives_directory}/")
+                })
+        })
+        .and_then(|arg| arg.split("${natives_directory}/").nth(1).map(ToString::to_string))
+        .and_then(|rest| rest.split_whitespace().next().map(ToString::to_string))
+        .map(|sub| natives_dir.join(sub))
+        .unwrap_or_else(|| natives_dir.clone());
+    fs::create_dir_all(&natives_extract_dir)
+        .map_err(|err| format!("Klasör oluşturulamadı: {err}"))?;
 
     emit_status(app, instance_id, json!({ "task": "client", "current": 0, "total": 1 }));
     let client_jar = paths.versions_dir().join(base_id).join(format!("{base_id}.jar"));
@@ -508,7 +527,7 @@ async fn prepare_client(
                                         .collect::<Vec<_>>()
                                 })
                                 .unwrap_or_default();
-                            extract_natives(&destination, &natives_dir, &excludes)?;
+                            extract_natives(&destination, &natives_extract_dir, &excludes)?;
                         }
                     }
                 }
@@ -528,7 +547,7 @@ async fn prepare_client(
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();
-                extract_natives(&destination, &natives_dir, &excludes)?;
+                extract_natives(&destination, &natives_extract_dir, &excludes)?;
             } else {
                 classpath.push(destination);
             }
@@ -542,6 +561,14 @@ async fn prepare_client(
         }
     }
     classpath.push(client_jar.clone());
+
+    // Forge/NeoForge kitaplıkları vanilla kütüphaneleriyle çakışabilir; BootstrapLauncher
+    // aynı jar'ı iki kez görünce "Duplicate key" ile çöker. Yol listesini tekilleştir.
+    let mut seen_paths = std::collections::HashSet::new();
+    classpath.retain(|path| {
+        let key = path.to_string_lossy().to_lowercase();
+        seen_paths.insert(key)
+    });
 
     let asset_index = version.get("assetIndex").cloned().unwrap_or(Value::Null);
     let asset_index_name = asset_index
@@ -722,10 +749,13 @@ fn build_java_command(
         .get("mainClass")
         .and_then(Value::as_str)
         .ok_or_else(|| "Sürüm tanımında mainClass bulunamadı".to_string())?;
+    // FML, client jar'ı -DignoreList üzerinden hariç tutar; bu yüzden version_name
+    // Minecraft sürümü olmalı (PrismLauncher'ın davranışı), loader profil id'si değil.
     let version_name = instance
         .get("version")
         .and_then(Value::as_str)
-        .unwrap_or("");
+        .unwrap_or("")
+        .to_string();
     let version_type = instance
         .get("versionType")
         .and_then(Value::as_str)
@@ -921,6 +951,12 @@ pub async fn launch_instance(
         .get("loaderVersion")
         .and_then(Value::as_str)
         .unwrap_or("");
+    if loader != "vanilla" && loader_version.is_empty() {
+        return Err(
+            "Bu profil bir mod yükleyici kullanıyor ancak sürümü seçilmemiş. Profili düzenleyip bir yükleyici sürümü seçin."
+                .to_string(),
+        );
+    }
     let effective_version = match loader {
         "fabric" if !loader_version.is_empty() => {
             format!("fabric-loader-{loader_version}-{instance_version}")
@@ -937,6 +973,62 @@ pub async fn launch_instance(
         "neoforge" if !loader_version.is_empty() => format!("neoforge-{loader_version}"),
         _ => instance_version.clone(),
     };
+
+    if loader != "vanilla" && !paths.version_json_path(&effective_version).exists() {
+        emit_status(app, instance_id, json!({ "task": "loader-install" }));
+        match loader {
+            "fabric" => {
+                let _ = loader_manager::install_fabric(paths, app, &instance_version, loader_version)
+                    .await?;
+            }
+            "quilt" => {
+                let _ = loader_manager::install_quilt(paths, app, &instance_version, loader_version)
+                    .await?;
+            }
+            "forge" | "neoforge" => {
+                let installer_java = {
+                    let configured = settings
+                        .get("javaPath")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string();
+                    if !configured.trim().is_empty() {
+                        configured
+                    } else if let Some(system) = java_manager::detect_system_java() {
+                        system
+                    } else {
+                        java_manager::find_cached_java(
+                            paths,
+                            java_manager::required_java_version_for_mc(&instance_version),
+                        )
+                        .map(|path| path.to_string_lossy().to_string())
+                        .unwrap_or_default()
+                    }
+                };
+                if installer_java.is_empty() {
+                    return Err(
+                        "Yükleyici kurulumu için Java gerekli. Ayarlar üzerinden bir Java yolu belirtebilirsiniz."
+                            .to_string(),
+                    );
+                }
+                let _ = loader_manager::install_forge_like(
+                    paths,
+                    app,
+                    loader,
+                    &instance_version,
+                    loader_version,
+                    &installer_java,
+                )
+                .await?;
+            }
+            _ => {
+                return Err(
+                    "Yükleyici kurulumu bulunamadı. Profili düzenleyip kaydederek yeniden kurulum yapın."
+                        .to_string(),
+                )
+            }
+        }
+    }
 
     emit_status(app, instance_id, json!({ "task": "preparing" }));
     let (version, base_id) = resolve_version(paths, &effective_version).await?;

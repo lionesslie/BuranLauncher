@@ -210,6 +210,7 @@ window.Pages.settings = {
         discordPresenceEnabled: el.querySelector('#s-discord').checked
       };
       await window.buran.settings.set(patch);
+      window.updateStatusBar?.();
       showToast(t('toast.settingsSaved'), 'success');
     };
   }

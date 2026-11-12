@@ -27,11 +27,15 @@ fn notify(level: &str, message: &str) {
     }
 }
 
+const DEFAULT_CLIENT_ID: &str = "1563197891261235302";
+
 fn discord_client_id() -> Option<String> {
-    std::env::var("DISCORD_CLIENT_ID")
+    let client_id = std::env::var("DISCORD_CLIENT_ID")
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty() && value != "BURAYA_DISCORD_CLIENT_ID_YAZIN")
+        .unwrap_or_else(|| DEFAULT_CLIENT_ID.to_string());
+    Some(client_id)
 }
 
 fn is_enabled(app: &AppHandle) -> bool {

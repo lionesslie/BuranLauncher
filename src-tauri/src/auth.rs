@@ -8,10 +8,14 @@ use tauri_plugin_dialog::DialogExt;
 use uuid::Uuid;
 
 const DEFAULT_CLIENT_ID: &str = "00000000402b5328";
-const DEVICE_CODE_URL: &str =
+const LEGACY_DEVICE_CODE_URL: &str = "https://login.live.com/oauth20_connect.srf";
+const LEGACY_TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
+const LEGACY_SCOPE: &str = "service::user.auth.xboxlive.com::MBI_SSL";
+const AZURE_DEVICE_CODE_URL: &str =
     "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
-const TOKEN_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
-const SCOPE: &str = "XboxLive.signin offline_access";
+const AZURE_TOKEN_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+const AZURE_SCOPE: &str = "XboxLive.signin offline_access";
+const DEVICE_CODE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
 
 #[derive(Clone)]
 pub struct MclcAuth {
@@ -23,12 +27,98 @@ pub struct MclcAuth {
     pub user_properties: String,
 }
 
-fn client_id() -> String {
-    std::env::var("MS_CLIENT_ID")
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty() && value != "BURAYA_AZURE_CLIENT_ID_YAZIN")
-        .unwrap_or_else(|| DEFAULT_CLIENT_ID.to_string())
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AuthFlavor {
+    Legacy,
+    Azure,
+}
+
+impl AuthFlavor {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Legacy => "legacy",
+            Self::Azure => "azure",
+        }
+    }
+
+    fn from_str(value: &str) -> Option<Self> {
+        match value {
+            "legacy" => Some(Self::Legacy),
+            "azure" => Some(Self::Azure),
+            _ => None,
+        }
+    }
+
+    fn device_code_url(self) -> &'static str {
+        match self {
+            Self::Legacy => LEGACY_DEVICE_CODE_URL,
+            Self::Azure => AZURE_DEVICE_CODE_URL,
+        }
+    }
+
+    fn token_url(self) -> &'static str {
+        match self {
+            Self::Legacy => LEGACY_TOKEN_URL,
+            Self::Azure => AZURE_TOKEN_URL,
+        }
+    }
+
+    fn scope(self) -> &'static str {
+        match self {
+            Self::Legacy => LEGACY_SCOPE,
+            Self::Azure => AZURE_SCOPE,
+        }
+    }
+
+    fn rps_ticket(self, access_token: &str) -> String {
+        let prefix = match self {
+            Self::Legacy => "t",
+            Self::Azure => "d",
+        };
+        format!("{prefix}={access_token}")
+    }
+}
+
+#[derive(Clone)]
+struct AuthConfig {
+    client_id: String,
+    flavor: AuthFlavor,
+}
+
+impl AuthConfig {
+    fn from_env() -> Self {
+        let client_id = std::env::var("MS_CLIENT_ID")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty() && value != "BURAYA_AZURE_CLIENT_ID_YAZIN")
+            .unwrap_or_else(|| DEFAULT_CLIENT_ID.to_string());
+        let flavor = if is_legacy_client_id(&client_id) {
+            AuthFlavor::Legacy
+        } else {
+            AuthFlavor::Azure
+        };
+        Self { client_id, flavor }
+    }
+
+    fn from_token_data(token_data: &Value) -> Self {
+        let fallback = Self::from_env();
+        let client_id = token_data
+            .get("clientId")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| value.trim().to_string())
+            .unwrap_or(fallback.client_id);
+        let flavor = token_data
+            .get("authFlavor")
+            .and_then(Value::as_str)
+            .and_then(AuthFlavor::from_str)
+            .unwrap_or(fallback.flavor);
+        Self { client_id, flavor }
+    }
+}
+
+fn is_legacy_client_id(client_id: &str) -> bool {
+    client_id == DEFAULT_CLIENT_ID || client_id.starts_with("00000000")
 }
 
 fn notify(app: &AppHandle, level: &str, message: &str) {
@@ -138,10 +228,17 @@ struct McAuthResult {
     uuid: String,
 }
 
-async fn request_device_code(client_id: &str) -> Result<Value, String> {
+async fn request_device_code(auth: &AuthConfig) -> Result<Value, String> {
+    let mut params = vec![
+        ("client_id", auth.client_id.as_str()),
+        ("scope", auth.flavor.scope()),
+    ];
+    if auth.flavor == AuthFlavor::Legacy {
+        params.push(("response_type", "device_code"));
+    }
     let response = http::client()
-        .post(DEVICE_CODE_URL)
-        .form(&[("client_id", client_id), ("scope", SCOPE)])
+        .post(auth.flavor.device_code_url())
+        .form(&params)
         .send()
         .await
         .map_err(|err| format!("Microsoft'a bağlanılamadı: {err}"))?;
@@ -160,7 +257,7 @@ async fn request_device_code(client_id: &str) -> Result<Value, String> {
 }
 
 async fn poll_device_token(
-    client_id: &str,
+    auth: &AuthConfig,
     device_code: &str,
     interval: u64,
     expires_in: u64,
@@ -172,11 +269,15 @@ async fn poll_device_token(
             return Err("Microsoft giriş süresi doldu. Lütfen tekrar deneyin.".to_string());
         }
         tokio::time::sleep(Duration::from_secs(wait)).await;
+        let grant_type = match auth.flavor {
+            AuthFlavor::Legacy => "device_code",
+            AuthFlavor::Azure => DEVICE_CODE_GRANT,
+        };
         let response = http::client()
-            .post(TOKEN_URL)
+            .post(auth.flavor.token_url())
             .form(&[
-                ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-                ("client_id", client_id),
+                ("grant_type", grant_type),
+                ("client_id", auth.client_id.as_str()),
                 ("device_code", device_code),
             ])
             .send()
@@ -220,14 +321,17 @@ async fn poll_device_token(
     }
 }
 
-async fn oauth_refresh(client_id: &str, refresh_token: &str) -> Result<(String, String), String> {
+async fn oauth_refresh(
+    auth: &AuthConfig,
+    refresh_token: &str,
+) -> Result<(String, String), String> {
     let response = http::client()
-        .post(TOKEN_URL)
+        .post(auth.flavor.token_url())
         .form(&[
             ("grant_type", "refresh_token"),
-            ("client_id", client_id),
+            ("client_id", auth.client_id.as_str()),
             ("refresh_token", refresh_token),
-            ("scope", SCOPE),
+            ("scope", auth.flavor.scope()),
         ])
         .send()
         .await
@@ -276,7 +380,10 @@ fn xsts_error_message(xerr: i64) -> String {
     }
 }
 
-async fn xbox_minecraft_auth(ms_access_token: &str) -> Result<McAuthResult, String> {
+async fn xbox_minecraft_auth(
+    ms_access_token: &str,
+    flavor: AuthFlavor,
+) -> Result<McAuthResult, String> {
     let xbl_response = http::client()
         .post("https://user.auth.xboxlive.com/user/authenticate")
         .header("x-xbl-contract-version", "1")
@@ -284,7 +391,7 @@ async fn xbox_minecraft_auth(ms_access_token: &str) -> Result<McAuthResult, Stri
             "Properties": {
                 "AuthMethod": "RPS",
                 "SiteName": "user.auth.xboxlive.com",
-                "RpsTicket": format!("d={ms_access_token}")
+                "RpsTicket": flavor.rps_ticket(ms_access_token)
             },
             "RelyingParty": "http://auth.xboxlive.com",
             "TokenType": "JWT"
@@ -429,6 +536,7 @@ fn store_token(
     oauth_access: &str,
     refresh_token: &str,
     mc: &McAuthResult,
+    auth: &AuthConfig,
 ) {
     let token_data = json!({
         "oauthAccessToken": oauth_access,
@@ -436,7 +544,9 @@ fn store_token(
         "mcAccessToken": mc.access_token,
         "expiresAt": mc.expires_at,
         "username": mc.username,
-        "uuid": mc.uuid
+        "uuid": mc.uuid,
+        "clientId": auth.client_id,
+        "authFlavor": auth.flavor.as_str()
     });
     let encrypted = secrets.encrypt(&token_data.to_string());
     store.map_array("accounts", |accounts| {
@@ -457,10 +567,10 @@ pub async fn login_with_microsoft(
     store: &Store,
     secrets: &SecretBox,
 ) -> Result<Value, String> {
-    let client_id = client_id();
+    let auth = AuthConfig::from_env();
     notify(app, "info", "Microsoft girişi başlatılıyor...");
 
-    let device = request_device_code(&client_id).await?;
+    let device = request_device_code(&auth).await?;
     let device_code = device
         .get("device_code")
         .and_then(Value::as_str)
@@ -473,8 +583,9 @@ pub async fn login_with_microsoft(
         .to_string();
     let verification_uri = device
         .get("verification_uri")
+        .or_else(|| device.get("verification_url"))
         .and_then(Value::as_str)
-        .unwrap_or("https://microsoft.com/devicelogin")
+        .unwrap_or("https://www.microsoft.com/link")
         .to_string();
     let message = device
         .get("message")
@@ -510,7 +621,7 @@ pub async fn login_with_microsoft(
     .await;
 
     notify(app, "info", "Microsoft giriş onayı bekleniyor...");
-    let token = poll_device_token(&client_id, &device_code, interval, expires_in).await?;
+    let token = poll_device_token(&auth, &device_code, interval, expires_in).await?;
     let oauth_access = token
         .get("access_token")
         .and_then(Value::as_str)
@@ -523,7 +634,7 @@ pub async fn login_with_microsoft(
         .to_string();
 
     notify(app, "info", "Xbox Live ve Minecraft oturumu doğrulanıyor...");
-    let mc = xbox_minecraft_auth(&oauth_access).await?;
+    let mc = xbox_minecraft_auth(&oauth_access, auth.flavor).await?;
 
     let mut accounts = store.array("accounts");
     let existing_index = accounts.iter().position(|account| {
@@ -561,6 +672,7 @@ pub async fn login_with_microsoft(
         &oauth_access,
         &refresh_token,
         &mc,
+        &auth,
     );
 
     if store.get_string("activeAccountId").is_none() {
@@ -626,33 +738,36 @@ pub async fn get_mclc_auth(
         .unwrap_or("")
         .to_string();
     if !refresh_token.is_empty() {
-        let client_id = client_id();
-        match oauth_refresh(&client_id, &refresh_token).await {
-            Ok((oauth_access, new_refresh)) => match xbox_minecraft_auth(&oauth_access).await {
-                Ok(mc) => {
-                    store_token(
-                        store,
-                        secrets,
-                        account_id,
-                        &oauth_access,
-                        &new_refresh,
-                        &mc,
-                    );
-                    return Ok(MclcAuth {
-                        access_token: mc.access_token,
-                        client_token: Uuid::new_v4().to_string(),
-                        uuid: mc.uuid,
-                        username: mc.username,
-                        user_type: "msa".to_string(),
-                        user_properties: "{}".to_string(),
-                    });
+        let auth = AuthConfig::from_token_data(&token_data);
+        match oauth_refresh(&auth, &refresh_token).await {
+            Ok((oauth_access, new_refresh)) => {
+                match xbox_minecraft_auth(&oauth_access, auth.flavor).await {
+                    Ok(mc) => {
+                        store_token(
+                            store,
+                            secrets,
+                            account_id,
+                            &oauth_access,
+                            &new_refresh,
+                            &mc,
+                            &auth,
+                        );
+                        return Ok(MclcAuth {
+                            access_token: mc.access_token,
+                            client_token: Uuid::new_v4().to_string(),
+                            uuid: mc.uuid,
+                            username: mc.username,
+                            user_type: "msa".to_string(),
+                            user_properties: "{}".to_string(),
+                        });
+                    }
+                    Err(err) => {
+                        crate::logger::warn(&format!(
+                            "Microsoft token sessiz yenileme başarısız, mevcut token ile devam ediliyor: {err}"
+                        ));
+                    }
                 }
-                Err(err) => {
-                    crate::logger::warn(&format!(
-                        "Microsoft token sessiz yenileme başarısız, mevcut token ile devam ediliyor: {err}"
-                    ));
-                }
-            },
+            }
             Err(err) => {
                 crate::logger::warn(&format!(
                     "Microsoft token sessiz yenileme başarısız, mevcut token ile devam ediliyor: {err}"

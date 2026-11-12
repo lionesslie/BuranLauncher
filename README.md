@@ -36,8 +36,8 @@ npm run build         # Platformun varsayılan paketleri
 
 ## Ortam Değişkenleri
 
-`.env` dosyasına (isteğe bağlı):
+Varsayılan değerler kodda gömülüdür; `.env` yalnızca bunları geçersiz kılmak için kullanılır:
 
-- `DISCORD_CLIENT_ID`: Discord Rich Presence için uygulama kimliği.
-- `BURAN_GITHUB_REPO`: Güncelleme kontrolü için `kullanici/repo` biçiminde GitHub deposu.
-- `MS_CLIENT_ID`: Microsoft girişi için özel Azure client ID'si.
+- `DISCORD_CLIENT_ID`: Discord Rich Presence için uygulama kimliği (varsayılan: `1563197891261235302`).
+- `BURAN_GITHUB_REPO`: Güncelleme kontrolü için GitHub deposu; `kullanici/repo` veya tam GitHub URL'si kabul edilir (varsayılan: `lionesslie/BuranLauncher`).
+- `MS_CLIENT_ID`: İsteğe bağlı özel Azure client ID'si. Tanımlanmazsa Microsoft'un genel Minecraft launcher client ID'siyle `login.live.com` cihaz kodu akışı kullanılır; özel Azure uygulaması verilirse `login.microsoftonline.com` akışına geçilir.

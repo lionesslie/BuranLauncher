@@ -4,13 +4,13 @@
   },
   "sidebar": {
     "home": "Главная",
-    "profiles": "Мои профили",
-    "modstore": "Магазин модов",
+    "profiles": "Профили",
+    "modstore": "Моды",
     "modpacks": "Сборки",
-    "installedMods": "Установленные моды",
-    "resources": "Ресурспаки и шейдеры",
+    "installedMods": "Мои моды",
+    "resources": "Ресурсы",
     "worlds": "Миры",
-    "serverhost": "Хостинг сервера",
+    "serverhost": "Серверы",
     "accounts": "Аккаунты",
     "settings": "Настройки"
   },
@@ -21,7 +21,35 @@
     "welcome": "Добро пожаловать",
     "quickPlay": "Играть",
     "noInstances": "У вас пока нет профилей.",
-    "createFirst": "Создать первый профиль"
+    "createFirst": "Создать первый профиль",
+    "tagline": "Your world. Your adventure.",
+    "playNow": "ИГРАТЬ",
+    "versionSelect": "Выбор версии",
+    "seeAll": "Показать все",
+    "news": "Новости",
+    "allNews": "Все новости",
+    "selected": "Выбрано",
+    "newProfile": "Создать новый профиль"
+  },
+  "news": {
+    "fallback": "Сейчас новостей нет. Обновления смотрите в Настройки > Обновления."
+  },
+  "status": {
+    "ram": "RAM",
+    "recommended": "Рекомендуется",
+    "java": "Java",
+    "javaAuto": "Авто",
+    "gameDir": "Папка игры",
+    "ready": "Готово",
+    "playing": "Игра запущена",
+    "downloading": "Загрузка",
+    "downloadingMc": "Загрузка Minecraft",
+    "downloadingFiles": "Загрузка файлов",
+    "preparing": "Подготовка",
+    "launching": "Запуск",
+    "installingLoader": "Установка загрузчика",
+    "downloadingJava": "Загрузка Java",
+    "openFolder": "Открыть папку"
   },
   "profiles": {
     "title": "Мои профили",
@@ -41,6 +69,8 @@
     "versionLabel": "Версия Minecraft",
     "loaderLabel": "Загрузчик модов",
     "loaderVersionLabel": "Версия загрузчика",
+    "loaderVersionRequired": "Версия загрузчика не выбрана. Выберите или укажите версию.",
+    "loaderVersionPlaceholder": "напр.: 47.2.20",
     "iconLabel": "Иконка",
     "create": "Создать",
     "cancel": "Отмена",
@@ -197,7 +227,7 @@
     "backgroundChoose": "Изменить фон",
     "backgroundReset": "Сбросить по умолчанию",
     "discordPresence": "Включить Discord Rich Presence",
-    "discordPresenceHint": "При включении в вашем профиле Discord будет видно, в какой профиль вы играете. Для работы нужен запущенный Discord и указанный в .env DISCORD_CLIENT_ID.",
+    "discordPresenceHint": "При включении в вашем профиле Discord будет видно, в какой профиль вы играете. Для работы нужен запущенный Discord.",
     "extraArgs": "Дополнительные аргументы игры",
     "launchBehavior": "Launcher при запуске игры",
     "launchBehaviorOptions": {

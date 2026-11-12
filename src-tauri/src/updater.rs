@@ -6,7 +6,7 @@ use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncWriteExt;
 
-const DEFAULT_REPO: &str = "BURAYA_GITHUB_KULLANICI_ADINIZI_YAZIN/BuranLauncher";
+const DEFAULT_REPO: &str = "lionesslie/BuranLauncher";
 
 #[derive(Clone)]
 struct PendingUpdate {
@@ -21,11 +21,30 @@ fn pending() -> &'static Mutex<Option<PendingUpdate>> {
     PENDING.get_or_init(|| Mutex::new(None))
 }
 
+fn normalize_repo(value: &str) -> Option<String> {
+    let trimmed = value.trim().trim_end_matches('/');
+    if trimmed.is_empty() || trimmed.contains("BURAYA_GITHUB_KULLANICI_ADINIZI_YAZIN") {
+        return None;
+    }
+    let repo = trimmed
+        .strip_prefix("https://github.com/")
+        .or_else(|| trimmed.strip_prefix("http://github.com/"))
+        .or_else(|| trimmed.strip_prefix("github.com/"))
+        .unwrap_or(trimmed)
+        .trim_end_matches(".git");
+    let mut parts = repo.split('/');
+    let owner = parts.next()?;
+    let name = parts.next()?;
+    if owner.is_empty() || name.is_empty() || parts.next().is_some() {
+        return None;
+    }
+    Some(format!("{owner}/{name}"))
+}
+
 fn repo() -> String {
     std::env::var("BURAN_GITHUB_REPO")
         .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
+        .and_then(|value| normalize_repo(&value))
         .unwrap_or_else(|| DEFAULT_REPO.to_string())
 }
 
@@ -248,4 +267,38 @@ pub fn quit_and_install(app: &AppHandle) -> Result<(), String> {
 
     app.exit(0);
     Ok(())
+}
+pub async fn list_releases(limit: usize) -> Result<Value, String> {
+    let url = format!(
+        "https://api.github.com/repos/{}/releases?per_page={limit}",
+        repo()
+    );
+    let response = http::client()
+        .get(&url)
+        .header("User-Agent", "BuranLauncher")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|err| format!("Sürüm notları alınamadı: {err}"))?;
+    let releases: Vec<Value> = response
+        .json()
+        .await
+        .map_err(|err| format!("Sürüm notları çözümlenemedi: {err}"))?;
+    let items: Vec<Value> = releases
+        .iter()
+        .take(limit)
+        .map(|release| {
+            json!({
+                "tag": release.get("tag_name").and_then(Value::as_str).unwrap_or(""),
+                "name": release.get("name").and_then(Value::as_str).unwrap_or(""),
+                "date": release.get("published_at").and_then(Value::as_str).unwrap_or(""),
+                "body": release.get("body").and_then(Value::as_str).unwrap_or(""),
+                "url": release.get("html_url").and_then(Value::as_str).unwrap_or("")
+            })
+        })
+        .collect();
+    Ok(json!({
+        "repoUrl": format!("https://github.com/{}/releases", repo()),
+        "items": items
+    }))
 }

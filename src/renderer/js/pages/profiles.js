@@ -90,10 +90,13 @@ window.Pages.profiles = {
       showToast(t('toast.launchStarted'));
       document.getElementById('log-panel').classList.add('open');
       window.runningInstances.add(id);
+      if (window.updateStatusState) window.updateStatusState();
       this.render(); // "Oyna" düğmesini hemen "Durdur"a çevir
       await window.buran.launch.start(id);
     } catch (err) {
       window.runningInstances.delete(id);
+      window.setStatusBusy?.(null);
+      if (window.updateStatusState) window.updateStatusState();
       showToast(t('toast.launchError', { error: err.message }), 'error');
       this.render();
     }
@@ -103,6 +106,7 @@ window.Pages.profiles = {
     try {
       await window.buran.launch.kill(id);
       window.runningInstances.delete(id);
+      if (window.updateStatusState) window.updateStatusState();
       showToast(t('toast.gameStopped'), 'success');
       this.render();
     } catch (err) {
@@ -171,7 +175,6 @@ window.Pages.profiles = {
   bindForm(box, instance) {
     const loaderSelect = box.querySelector('#f-loader');
     const loaderVersionField = box.querySelector('#loader-version-field');
-    const loaderVersionSelect = box.querySelector('#f-loader-version');
     const versionSelect = box.querySelector('#f-version');
     const versionTypeSelect = box.querySelector('#f-version-type');
 
@@ -183,27 +186,25 @@ window.Pages.profiles = {
 
     async function refreshLoaderVersions() {
       const loader = loaderSelect.value;
-      if (loader === 'vanilla') { loaderVersionField.style.display = 'none'; return; }
+      if (loader === 'vanilla') { loaderVersionField.style.display = 'none'; loaderVersionField.innerHTML = ''; return; }
       loaderVersionField.style.display = 'block';
-      loaderVersionSelect.innerHTML = `<option>${t('common.loading')}</option>`;
+      loaderVersionField.innerHTML = `
+        <label>${t('profiles.loaderVersionLabel')}</label>
+        <select id="f-loader-version" style="width:100%;"><option>${t('common.loading')}</option></select>
+      `;
+      const selectEl = loaderVersionField.querySelector('#f-loader-version');
       try {
-        if (loader === 'fabric') {
-          const versions = await window.buran.loader.fabricVersions();
-          loaderVersionSelect.innerHTML = versions.map(v => `<option value="${v.version}">${v.version}</option>`).join('');
-        } else if (loader === 'quilt') {
-          const versions = await window.buran.loader.quiltVersions();
-          loaderVersionSelect.innerHTML = versions.map(v => `<option value="${v.version}">${v.version}</option>`).join('');
+        if (loader === 'fabric' || loader === 'quilt') {
+          const versions = await (loader === 'fabric'
+            ? window.buran.loader.fabricVersions()
+            : window.buran.loader.quiltVersions());
+          selectEl.innerHTML = versions.map(v => `<option value="${v.version}">${v.version}</option>`).join('');
+          if (instance && instance.loader === loader && instance.loaderVersion) selectEl.value = instance.loaderVersion;
         } else {
-          loaderVersionSelect.innerHTML = `<option value="">${t('profiles.loaderVersionLabel')} (${versionSelect.value})</option>`;
-          loaderVersionSelect.innerHTML = `<input-fallback>`;
           loaderVersionField.innerHTML = `
             <label>${t('profiles.loaderVersionLabel')}</label>
-            <input type="text" id="f-loader-version-text" placeholder="örn: 47.2.20" style="width:100%;" />
+            <input type="text" id="f-loader-version-text" placeholder="${t('profiles.loaderVersionPlaceholder')}" style="width:100%;" value="${instance && instance.loaderVersion ? escapeHtml(instance.loaderVersion) : ''}" />
           `;
-        }
-        if (instance && instance.loaderVersion && loaderVersionSelect.querySelector) {
-          const opt = Array.from(loaderVersionSelect.options || []).find(o => o.value === instance.loaderVersion);
-          if (opt) loaderVersionSelect.value = instance.loaderVersion;
         }
       } catch (err) {
         loaderVersionField.innerHTML = `<p class="subtle">${t('toast.genericError', { error: err.message })}</p>`;
@@ -221,32 +222,40 @@ window.Pages.profiles = {
       let loaderVersion = null;
       if (loader !== 'vanilla') {
         const textInput = box.querySelector('#f-loader-version-text');
-        loaderVersion = textInput ? textInput.value : loaderVersionSelect.value;
+        const selectInput = box.querySelector('#f-loader-version');
+        loaderVersion = (textInput ? textInput.value : (selectInput ? selectInput.value : '')).trim();
+      }
+      if (loader !== 'vanilla' && !loaderVersion) {
+        showToast(t('profiles.loaderVersionRequired'), 'error');
+        return;
       }
 
+      const submitBtn = box.querySelector('#form-submit');
+      submitBtn.disabled = true;
       try {
-        const payload = { name, version, versionType: versionTypeSelect.value, loader, loaderVersion };
-        let targetId;
-        if (instance) {
-          await window.buran.instances.update(instance.id, payload);
-          targetId = instance.id;
-        } else {
-          const created = await window.buran.instances.create(payload);
-          targetId = created.id;
-        }
-
-        if (loader !== 'vanilla' && loaderVersion) {
+        const needsInstall = loader !== 'vanilla' && (!instance || instance.loader !== loader || instance.loaderVersion !== loaderVersion);
+        if (needsInstall) {
           try {
             await window.buran.loader.install({ type: loader, mcVersion: version, loaderVersion });
           } catch (err) {
             showToast(t('toast.genericError', { error: err.message }), 'error');
+            submitBtn.disabled = false;
+            return;
           }
+        }
+
+        const payload = { name, version, versionType: versionTypeSelect.value, loader, loaderVersion };
+        if (instance) {
+          await window.buran.instances.update(instance.id, payload);
+        } else {
+          await window.buran.instances.create(payload);
         }
 
         closeModal();
         showToast(t('toast.profileCreated'), 'success');
         window.Pages.profiles.render();
       } catch (err) {
+        submitBtn.disabled = false;
         showToast(t('toast.genericError', { error: err.message }), 'error');
       }
     };
