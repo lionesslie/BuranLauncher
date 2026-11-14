@@ -63,6 +63,9 @@
     loader: {
       fabricVersions: function () { return invoke('loader:fabricVersions'); },
       quiltVersions: function () { return invoke('loader:quiltVersions'); },
+      forgeVersions: function (mcVersion) { return invoke('loader:forgeVersions', mcVersion); },
+      neoforgeVersions: function (mcVersion) { return invoke('loader:neoforgeVersions', mcVersion); },
+      paperVersions: function () { return invoke('loader:paperVersions'); },
       install: function (params) { return invoke('loader:install', params); },
       onProgress: function (callback) { on('loader:progress', callback); }
     },
@@ -168,7 +171,8 @@
       openUrl: function (url) { return invoke('app:openUrl', url); }
     },
     news: {
-      list: function () { return invoke('news:list'); }
+      list: function () { return invoke('news:list'); },
+      minecraft: function () { return invoke('news:minecraft'); }
     },
     worlds: {
       list: function (instanceId) { return invoke('worlds:list', instanceId); },

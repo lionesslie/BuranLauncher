@@ -29,6 +29,30 @@ pub async fn get_json(url: &str) -> Result<serde_json::Value, String> {
         .map_err(|err| format!("Yanıt ayrıştırılamadı: {err}"))
 }
 
+pub async fn get_text(url: &str) -> Result<String, String> {
+    let response = client()
+        .get(url)
+        .header(reqwest::header::USER_AGENT, USER_AGENT)
+        .send()
+        .await
+        .map_err(|err| {
+            let mut message = format!("Ağ hatası: {err}");
+            let mut source = std::error::Error::source(&err);
+            while let Some(cause) = source {
+                message.push_str(&format!(" <- {cause}"));
+                source = cause.source();
+            }
+            message
+        })?;
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status().as_u16()));
+    }
+    response
+        .text()
+        .await
+        .map_err(|err| format!("Yanıt okunamadı: {err}"))
+}
+
 pub async fn download_bytes(url: &str) -> Result<Vec<u8>, String> {
     let response = client()
         .get(url)

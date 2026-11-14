@@ -228,6 +228,15 @@ where
                 )
                 .await
             }
+            "paper" => {
+                loader_manager::install_paper_server(
+                    app,
+                    &server_dir,
+                    &version,
+                    loader_version.as_deref(),
+                )
+                .await
+            }
             "forge" | "neoforge" => {
                 let loader_version = loader_version
                     .as_deref()

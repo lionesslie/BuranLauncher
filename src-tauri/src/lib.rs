@@ -9,6 +9,7 @@ mod java_manager;
 mod launch_manager;
 mod loader_manager;
 mod logger;
+mod minecraft_news;
 mod modrinth;
 mod paths;
 mod secrets;
@@ -73,6 +74,10 @@ pub fn run() {
                 WebviewUrl::App("index.html".into()),
             )
             .title("Buran Launcher")
+            // WebView2 yeniden boyama/yeniden yükleme anlarında varsayılan olarak
+            // siyah/parlak bir zemin basar; arayüz rengiyle eşitleyerek siyah
+            // parlamayı önlüyoruz (--bg: #111315).
+            .background_color(tauri::window::Color(0x11, 0x13, 0x15, 0xff))
             .inner_size(1280.0, 800.0)
             .min_inner_size(960.0, 600.0)
             .resizable(true)

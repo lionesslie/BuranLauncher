@@ -29,7 +29,12 @@
     "news": "Haberler",
     "allNews": "Tüm Haberler",
     "selected": "Seçili",
-    "newProfile": "Yeni Profil Oluştur"
+    "newProfile": "Yeni Profil Oluştur",
+    "newsTitle": "Haberler",
+    "newsSnapshot": "Snapshot",
+    "newsRelease": "Sürüm",
+    "newsEmpty": "Şimdilik haber yok",
+    "newsError": "Haberler yüklenemedi"
   },
   "news": {
     "fallback": "Şu anda gösterilecek haber yok. Güncellemeler için Ayarlar > Güncellemeler bölümüne bakabilirsin."
@@ -81,7 +86,8 @@
       "snapshot": "Anlık Görüntü",
       "old_beta": "Eski Beta",
       "old_alpha": "Eski Alpha"
-    }
+    },
+    "files": "Dosyalar"
   },
   "modstore": {
     "title": "Mod Mağazası",
@@ -150,7 +156,9 @@
       "downloading": "Sunucu dosyaları indiriliyor...",
       "installing": "Kuruluyor...",
       "done": "Tamamlandı"
-    }
+    },
+    "restart": "Yeniden Başlat",
+    "restarting": "Sunucu yeniden başlatılıyor..."
   },
   "worlds": {
     "title": "Dünyalar",
@@ -275,5 +283,9 @@
     "close": "Kapat",
     "yes": "Evet",
     "no": "Hayır"
+  },
+  "time": {
+    "hours": "sa",
+    "minutes": "dk"
   }
 }

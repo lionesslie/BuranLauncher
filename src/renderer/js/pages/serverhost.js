@@ -39,7 +39,6 @@ window.Pages.serverhost = {
   cardHtml(s, isRunning, index) {
     return `
       <div class="card instance-card" data-id="${s.id}" style="animation-delay:${Math.min(index * 45, 400)}ms">
-        <div class="instance-card-icon" data-icon-el="server"></div>
         <div class="instance-card-name">${escapeHtml(s.name)}</div>
         <div class="instance-card-meta">${s.version} · ${s.loader}${s.loaderVersion ? ' ' + s.loaderVersion : ''}</div>
         <div class="instance-card-meta">
@@ -47,7 +46,8 @@ window.Pages.serverhost = {
         </div>
         <div class="instance-card-actions">
           ${isRunning
-            ? `<button class="btn danger" data-action="stop" data-id="${s.id}">${t('profiles.stop')}</button>`
+            ? `<button class="btn danger" data-action="stop" data-id="${s.id}">${t('profiles.stop')}</button>
+               <button class="btn secondary" data-action="restart" data-id="${s.id}">${t('serverhost.restart')}</button>`
             : `<button class="btn" data-action="start" data-id="${s.id}">${t('serverhost.start')}</button>`}
           <button class="btn secondary" data-action="manage" data-id="${s.id}">${t('serverhost.manage')}</button>
           <button class="btn danger" data-action="delete" data-id="${s.id}" ${isRunning ? 'disabled' : ''}>${t('profiles.delete')}</button>
@@ -57,7 +57,6 @@ window.Pages.serverhost = {
   },
 
   bindListEvents(grid) {
-    grid.querySelectorAll('[data-icon-el="server"]').forEach(e => { e.innerHTML = icon('server'); });
     grid.querySelectorAll('[data-action]').forEach(btn => {
       const id = btn.getAttribute('data-id');
       const action = btn.getAttribute('data-action');
@@ -71,6 +70,8 @@ window.Pages.serverhost = {
             await window.buran.servers.stop(id);
             showToast(t('serverhost.stopping'), 'success');
             setTimeout(() => this.renderList(), 1500);
+          } else if (action === 'restart') {
+            return this.restartServer(id);
           } else if (action === 'manage') {
             this.viewingServerId = id;
             this.render();
@@ -87,6 +88,25 @@ window.Pages.serverhost = {
         }
       };
     });
+  },
+
+  // Sunucuyu düzgün kapatıp (world kaydı için) tamamen durduğunu bekleyip
+  // yeniden başlatır; isRunning 120 saniyeye kadar poll edilir.
+  async restartServer(id) {
+    showToast(t('serverhost.restarting'), 'info');
+    try {
+      await window.buran.servers.stop(id);
+      const deadline = Date.now() + 120000;
+      while (await window.buran.servers.isRunning(id)) {
+        if (Date.now() > deadline) throw new Error('restart timeout');
+        await new Promise(r => setTimeout(r, 700));
+      }
+      await window.buran.servers.start(id);
+      showToast(t('serverhost.started'), 'success');
+    } catch (err) {
+      showToast(t('toast.genericError', { error: err.message }), 'error');
+    }
+    this.render();
   },
 
   async openCreateModal() {
@@ -123,6 +143,7 @@ window.Pages.serverhost = {
           <option value="quilt">Quilt</option>
           <option value="forge">Forge</option>
           <option value="neoforge">NeoForge</option>
+          <option value="paper">Paper</option>
         </select>
       </div>
       <div class="field" id="sf-loader-version-field" style="display:none;">
@@ -177,32 +198,67 @@ window.Pages.serverhost = {
       versionSelect.innerHTML = versions.map(v => `<option value="${v.id}">${v.id}</option>`).join('');
     };
 
+    let lastLoader = 'vanilla';
     async function refreshLoaderVersions() {
       const loader = loaderSelect.value;
+      // Paper: MC sürüm listesi Paper API'den gelir; ayrı loader sürümü yok
+      if (loader === 'paper') {
+        loaderVersionField.style.display = 'none';
+        loaderVersionField.innerHTML = '';
+        versionSelect.innerHTML = `<option>${t('common.loading')}</option>`;
+        const paperVersions = await window.buran.loader.paperVersions();
+        versionSelect.innerHTML = paperVersions
+          .map(v => `<option value="${v.version}">${v.version}</option>`)
+          .join('');
+        lastLoader = 'paper';
+        return;
+      }
+      if (lastLoader === 'paper') {
+        // Paper'dan çıkınca vanilla MC sürüm listesini geri getir
+        versionTypeSelect.onchange();
+      }
+      lastLoader = loader;
       if (loader === 'vanilla') { loaderVersionField.style.display = 'none'; return; }
       loaderVersionField.style.display = 'block';
-      if (loader === 'fabric' || loader === 'quilt') {
-        loaderVersionSelect.innerHTML = `<option>${t('common.loading')}</option>`;
-        const versions = loader === 'fabric'
-          ? await window.buran.loader.fabricVersions()
-          : await window.buran.loader.quiltVersions();
-        loaderVersionSelect.innerHTML = versions.map(v => `<option value="${v.version}">${v.version}</option>`).join('');
-      } else {
-        loaderVersionField.innerHTML = `
-          <label>${t('profiles.loaderVersionLabel')}</label>
-          <input type="text" id="sf-loader-version-text" placeholder="örn: 47.2.20" style="width:100%;" />
-        `;
+      loaderVersionSelect.innerHTML = `<option>${t('common.loading')}</option>`;
+      try {
+        let versions;
+        if (loader === 'fabric' || loader === 'quilt') {
+          versions = loader === 'fabric'
+            ? await window.buran.loader.fabricVersions()
+            : await window.buran.loader.quiltVersions();
+        } else if (loader === 'forge') {
+          versions = await window.buran.loader.forgeVersions(versionSelect.value);
+        } else {
+          versions = await window.buran.loader.neoforgeVersions(versionSelect.value);
+        }
+        if (!versions.length) {
+          loaderVersionSelect.innerHTML = `<option value="">${t('profiles.loaderVersionPlaceholder')}</option>`;
+          return;
+        }
+        loaderVersionSelect.innerHTML = versions
+          .map(v => `<option value="${v.version}">${v.version}${v.tag === 'recommended' ? ' ★' : ''}</option>`)
+          .join('');
+      } catch (err) {
+        loaderVersionSelect.innerHTML = `<option value="">${t('profiles.loaderVersionPlaceholder')}</option>`;
       }
     }
     loaderSelect.onchange = refreshLoaderVersions;
+    // Forge/NeoForge sürümleri MC sürümüne bağlıdır
+    versionSelect.onchange = () => {
+      if (loaderSelect.value === 'forge' || loaderSelect.value === 'neoforge') {
+        refreshLoaderVersions();
+      }
+    };
 
     box.querySelector('#sf-cancel').onclick = closeModal;
     submitBtn.onclick = async () => {
       const name = box.querySelector('#sf-name').value;
-      const version = versionSelect.value;
       const loader = loaderSelect.value;
+      // Paper'da sürüm Paper listesinden seçilir; loaderVersion (derleme) otomatiktir
+      const version = versionSelect.value;
       let loaderVersion = null;
-      if (loader !== 'vanilla') {
+      if (loader !== 'vanilla' && loader !== 'paper') {
         const textInput = box.querySelector('#sf-loader-version-text');
         loaderVersion = textInput ? textInput.value : loaderVersionSelect.value;
       }
@@ -260,7 +316,8 @@ window.Pages.serverhost = {
         <h1 class="page-title" style="margin:0;">${escapeHtml(server.name)}</h1>
         <div class="toolbar-right">
           ${isRunning
-            ? `<button class="btn danger" id="sd-stop">${t('profiles.stop')}</button>`
+            ? `<button class="btn danger" id="sd-stop">${t('profiles.stop')}</button>
+               <button class="btn secondary" id="sd-restart">${t('serverhost.restart')}</button>`
             : `<button class="btn" id="sd-start">${t('serverhost.start')}</button>`}
           <button class="btn secondary" id="sd-open-folder">${t('serverhost.openFolder')}</button>
           <button class="btn danger" id="sd-delete" ${isRunning ? 'disabled' : ''}>${t('profiles.delete')}</button>
@@ -353,6 +410,8 @@ window.Pages.serverhost = {
         showToast(t('toast.genericError', { error: err.message }), 'error');
       }
     };
+    const restartBtn = el.querySelector('#sd-restart');
+    if (restartBtn) restartBtn.onclick = () => this.restartServer(serverId);
 
     const cmdInput = el.querySelector('#sd-command');
     const sendCmd = async () => {

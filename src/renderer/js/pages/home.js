@@ -53,6 +53,15 @@ window.Pages.home = {
           </div>
           <div id="home-versions"></div>
         </div>
+        <div class="card home-card">
+          <div class="home-card-head">
+            <span class="icon" data-icon="megaphone"></span>
+            <span class="home-card-title">${t('home.newsTitle')}</span>
+          </div>
+          <div class="home-news-list" id="home-news">
+            <div class="news-empty">${t('common.loading')}</div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -178,6 +187,41 @@ window.Pages.home = {
     }
 
     el.querySelector('#home-seeall').onclick = () => switchPage('profiles');
+
+    // --- Haberler: Minecraft resmi sürüm notları ---
+    const newsEl = el.querySelector('#home-news');
+    if (newsEl) {
+      try {
+        const news = await window.buran.news.minecraft();
+        if (!news.length) {
+          newsEl.innerHTML = `<div class="news-empty">${t('home.newsEmpty')}</div>`;
+        } else {
+          newsEl.innerHTML = news.map(item => {
+            const badge = item.type === 'snapshot'
+              ? `<span class="news-badge">${t('home.newsSnapshot')}</span>`
+              : `<span class="news-badge release">${t('home.newsRelease')}</span>`;
+            const date = item.date ? new Date(item.date).toLocaleDateString() : '';
+            const image = item.image
+              ? `<img class="news-thumb" src="${escapeHtml(item.image)}" alt="" draggable="false" loading="lazy" onerror="this.style.display='none'">`
+              : '';
+            return `
+            <div class="news-item" title="${escapeHtml(item.title)}">
+              ${image}
+              <div class="news-info">
+                <div class="news-item-top">
+                  ${badge}
+                  <span class="news-item-date">${escapeHtml(date)}</span>
+                </div>
+                <div class="news-item-title">${escapeHtml(item.title)}</div>
+                <div class="news-item-text">${escapeHtml(item.shortText || '')}</div>
+              </div>
+            </div>`;
+          }).join('');
+        }
+      } catch (err) {
+        newsEl.innerHTML = `<div class="news-empty">${t('home.newsError')}</div>`;
+      }
+    }
   }
 };
 

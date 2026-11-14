@@ -31,19 +31,25 @@ window.Pages.profiles = {
 
   cardHtml(inst, index = 0) {
     const lastPlayed = inst.lastPlayed ? new Date(inst.lastPlayed).toLocaleDateString() : t('profiles.never');
-    const hours = Math.floor((inst.totalPlaytimeMs || 0) / 3600000);
+    const ms = inst.totalPlaytimeMs || 0;
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
+    const playtime = hours > 0
+      ? `${hours} ${t('time.hours')} ${minutes} ${t('time.minutes')}`
+      : `${minutes} ${t('time.minutes')}`;
     const isRunning = window.runningInstances && window.runningInstances.has(inst.id);
     return `
       <div class="card instance-card" data-id="${inst.id}" style="animation-delay:${Math.min(index * 45, 400)}ms">
         <div class="instance-card-icon instance-card-icon-grass"></div>
         <div class="instance-card-name">${escapeHtml(inst.name)}</div>
         <div class="instance-card-meta">${inst.version} · ${inst.loader}${inst.loaderVersion ? ' ' + inst.loaderVersion : ''}</div>
-        <div class="instance-card-meta">${t('profiles.lastPlayed')}: ${lastPlayed} · ${t('profiles.totalPlaytime')}: ${hours} sa</div>
+        <div class="instance-card-meta">${t('profiles.lastPlayed')}: ${lastPlayed} · ${t('profiles.totalPlaytime')}: ${playtime}</div>
         <div class="instance-card-actions">
           ${isRunning
             ? `<button class="btn danger" data-action="stop" data-id="${inst.id}">${t('profiles.stop')}</button>`
             : `<button class="btn" data-action="play" data-id="${inst.id}">${t('profiles.play')}</button>`}
           <button class="btn secondary" data-action="edit" data-id="${inst.id}" ${isRunning ? 'disabled' : ''}>${t('profiles.edit')}</button>
+          <button class="btn secondary" data-action="files" data-id="${inst.id}">${t('profiles.files')}</button>
           <button class="btn secondary" data-action="duplicate" data-id="${inst.id}">${t('profiles.duplicate')}</button>
           <button class="btn secondary" data-action="export" data-id="${inst.id}">${t('profiles.export')}</button>
           <button class="btn danger" data-action="delete" data-id="${inst.id}" ${isRunning ? 'disabled' : ''}>${t('profiles.delete')}</button>
@@ -61,6 +67,10 @@ window.Pages.profiles = {
           if (action === 'play') return this.playInstance(id);
           if (action === 'stop') return this.stopInstance(id);
           if (action === 'edit') return this.openEditModal(id);
+          if (action === 'files') {
+            await window.buran.instances.openFolder(id);
+            return;
+          }
           if (action === 'duplicate') {
             await window.buran.instances.duplicate(id);
             showToast(t('toast.profileCreated'), 'success');
@@ -194,17 +204,25 @@ window.Pages.profiles = {
       `;
       const selectEl = loaderVersionField.querySelector('#f-loader-version');
       try {
+        let versions;
         if (loader === 'fabric' || loader === 'quilt') {
-          const versions = await (loader === 'fabric'
+          versions = await (loader === 'fabric'
             ? window.buran.loader.fabricVersions()
             : window.buran.loader.quiltVersions());
-          selectEl.innerHTML = versions.map(v => `<option value="${v.version}">${v.version}</option>`).join('');
-          if (instance && instance.loader === loader && instance.loaderVersion) selectEl.value = instance.loaderVersion;
+        } else if (loader === 'forge') {
+          versions = await window.buran.loader.forgeVersions(versionSelect.value);
+        } else if (loader === 'neoforge') {
+          versions = await window.buran.loader.neoforgeVersions(versionSelect.value);
         } else {
-          loaderVersionField.innerHTML = `
-            <label>${t('profiles.loaderVersionLabel')}</label>
-            <input type="text" id="f-loader-version-text" placeholder="${t('profiles.loaderVersionPlaceholder')}" style="width:100%;" value="${instance && instance.loaderVersion ? escapeHtml(instance.loaderVersion) : ''}" />
-          `;
+          return;
+        }
+        if (!versions.length) {
+          loaderVersionField.innerHTML = `<label>${t('profiles.loaderVersionLabel')}</label><p class="subtle">${t('profiles.loaderVersionPlaceholder')}</p>`;
+          return;
+        }
+        selectEl.innerHTML = versions.map(v => `<option value="${v.version}">${v.version}${v.tag === 'recommended' ? ' ★' : ''}</option>`).join('');
+        if (instance && instance.loader === loader && instance.loaderVersion) {
+          selectEl.value = instance.loaderVersion;
         }
       } catch (err) {
         loaderVersionField.innerHTML = `<p class="subtle">${t('toast.genericError', { error: err.message })}</p>`;
@@ -212,6 +230,12 @@ window.Pages.profiles = {
     }
 
     loaderSelect.onchange = refreshLoaderVersions;
+    // Forge/NeoForge sürümleri MC sürümüne bağlıdır; MC sürümü değişince liste de tazelenir
+    versionSelect.onchange = () => {
+      if (loaderSelect.value === 'forge' || loaderSelect.value === 'neoforge') {
+        refreshLoaderVersions();
+      }
+    };
     if (instance && instance.loader !== 'vanilla') refreshLoaderVersions();
 
     box.querySelector('#form-cancel').onclick = closeModal;

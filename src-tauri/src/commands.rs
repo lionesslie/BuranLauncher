@@ -212,6 +212,15 @@ pub async fn buran_invoke(
 
         "loader:fabricVersions" => loader_manager::list_fabric_loader_versions().await,
         "loader:quiltVersions" => loader_manager::list_quilt_loader_versions().await,
+        "loader:forgeVersions" => {
+            let mc_version = arg_string(&args, 0).unwrap_or_default();
+            loader_manager::list_forge_versions(&mc_version).await
+        }
+        "loader:neoforgeVersions" => {
+            let mc_version = arg_string(&args, 0).unwrap_or_default();
+            loader_manager::list_neoforge_versions(&mc_version).await
+        }
+        "loader:paperVersions" => loader_manager::list_paper_versions().await,
         "loader:install" => {
             let params = arg(&args, 0);
             let loader_type = param_string(&params, "type").unwrap_or("vanilla");
@@ -674,6 +683,8 @@ pub async fn buran_invoke(
             Ok(Value::Null)
         }
         "news:list" => updater::list_releases(5).await,
+        // Minecraft resmi sürüm notları (Java patch/snapshot)
+        "news:minecraft" => crate::minecraft_news::fetch_java_patch_notes(10).await,
 
         "settings:get" => Ok(store.settings()),
         "settings:set" => {

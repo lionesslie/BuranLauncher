@@ -7,6 +7,7 @@ use tauri::{AppHandle, Emitter};
 
 const FABRIC_META: &str = "https://meta.fabricmc.net/v2";
 const QUILT_META: &str = "https://meta.quiltmc.org/v3";
+const PAPER_API: &str = "https://fill.papermc.io/v3";
 
 fn emit_loader_progress(app: &AppHandle, payload: Value) {
     let _ = app.emit("loader:progress", payload);
@@ -32,6 +33,129 @@ pub async fn list_quilt_loader_versions() -> Result<Value, String> {
     http::get_json(&format!("{QUILT_META}/versions/loader"))
         .await
         .map_err(|_| "Quilt yükleyici sürümleri alınamadı".to_string())
+}
+
+/// "47.2.20" gibi sürüm dizisini sayısal parçalara böler (doğru sıralama için).
+fn version_segments(version: &str) -> Vec<u64> {
+    version
+        .split(|character: char| character == '.' || character == '-')
+        .map(|part| part.trim().parse::<u64>().unwrap_or(0))
+        .collect()
+}
+
+/// Forge sürümlerini promotions listesinden çeker: [önerilen, son sürüm, ...].
+pub async fn list_forge_versions(mc_version: &str) -> Result<Value, String> {
+    let promotions = http::get_json(
+        "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json",
+    )
+    .await
+    .map_err(|_| "Forge sürümleri alınamadı".to_string())?;
+    let promos = promotions
+        .get("promos")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "Forge promos listesi boş döndü".to_string())?;
+
+    let exact_prefix = format!("{mc_version}-");
+    // Çok eski sürümler için "1.12-latest" biçiminde iki parçalı anahtar da vardır
+    let two_parts: Vec<&str> = mc_version.split('.').take(2).collect();
+    let short_prefix = if two_parts.len() == 2 {
+        format!("{}-{}", two_parts[0], two_parts[1])
+    } else {
+        String::new()
+    };
+
+    let mut versions: Vec<(u8, String)> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for (key, value) in promos {
+        let Some(version) = value.as_str() else { continue };
+        let Some(tag) = key
+            .strip_prefix(&exact_prefix)
+            .or_else(|| {
+                if short_prefix.is_empty() {
+                    None
+                } else {
+                    key.strip_prefix(&short_prefix)
+                }
+            })
+        else {
+            continue;
+        };
+        let tag = tag.to_lowercase();
+        if tag != "latest" && tag != "recommended" {
+            continue;
+        }
+        if seen.insert(version.to_string()) {
+            let priority = if tag == "recommended" { 2 } else { 1 };
+            versions.push((priority, version.to_string()));
+        }
+    }
+    // Önerilen en önde, sonra son sürüm, kalanlar yeniden eskiye
+    versions.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then_with(|| version_segments(&b.1).cmp(&version_segments(&a.1)))
+    });
+    Ok(json!(versions
+        .into_iter()
+        .map(|(priority, version)| json!({ "version": version, "tag": if priority == 2 { "recommended" } else { "latest" } }))
+        .collect::<Vec<Value>>()))
+}
+
+/// NeoForge sürümlerini maven metadata'sından çeker ve verilen MC sürümüyle
+/// uyumlu olanları döndürür (ör. 1.21.1 → 21.1.x), yeniden eskiye sıralı.
+pub async fn list_neoforge_versions(mc_version: &str) -> Result<Value, String> {
+    let metadata = http::get_text(
+        "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml",
+    )
+    .await?;
+    let mut versions: Vec<String> = Vec::new();
+    for line in metadata.lines() {
+        let trimmed = line.trim();
+        let Some(rest) = trimmed.strip_prefix("<version>") else { continue };
+        let Some(end) = rest.find("</version>") else { continue };
+        versions.push(rest[..end].to_string());
+    }
+    let mut mc_parts = mc_version.split('.');
+    let _major = mc_parts.next(); // her zaman "1"
+    let minor = mc_parts.next().unwrap_or("");
+    let patch = mc_parts.next().unwrap_or("");
+    let prefix = if patch.is_empty() {
+        format!("{minor}.")
+    } else {
+        format!("{minor}.{patch}.")
+    };
+    let mut filtered: Vec<String> = versions
+        .into_iter()
+        .filter(|version| version.starts_with(&prefix))
+        .collect();
+    filtered.sort_by(|a, b| version_segments(b).cmp(&version_segments(a)));
+    Ok(json!(filtered
+        .into_iter()
+        .map(|version| json!({ "version": version }))
+        .collect::<Vec<Value>>()))
+}
+
+/// Kullanılabilir Paper (MC) sürümlerini döndürür, yeniden eskiye sıralı.
+/// (PaperMC'nin eski v2 API'si kapandı; Fill v3 kullanılır.)
+pub async fn list_paper_versions() -> Result<Value, String> {
+    let response = http::get_json(&format!("{PAPER_API}/projects/paper")).await?;
+    let families = response
+        .get("versions")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "Paper sürüm listesi beklenen biçimde değil".to_string())?;
+    let mut versions: Vec<String> = families
+        .values()
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter(|version| !version.contains('-')) // pre/rc sürümlerini çıkar
+        .map(ToString::to_string)
+        .collect();
+    versions.sort_by(|a, b| version_segments(b).cmp(&version_segments(a)));
+    versions.dedup();
+    Ok(json!(versions
+        .into_iter()
+        .map(|version| json!({ "version": version }))
+        .collect::<Vec<Value>>()))
 }
 
 async fn install_meta_profile(
@@ -389,4 +513,58 @@ pub async fn install_forge_like_server(
         "{loader_type} sunucu kurulumu tamamlandı ama çalıştırılabilir dosya bulunamadı (run.sh/run.bat veya universal.jar). Sunucu klasörünü elle kontrol edin: {}",
         server_dir.display()
     ))
+}
+
+/// Paper sunucusunu indirip kurar: tek dosya (server.jar) yeterlidir.
+/// `build` verilmezse son derleme kullanılır (Fill v3: en yenisi ilk eleman).
+pub async fn install_paper_server(
+    app: &AppHandle,
+    server_dir: &Path,
+    mc_version: &str,
+    build: Option<&str>,
+) -> Result<Value, String> {
+    emit_server_progress(app, json!({ "stage": "downloadingServer" }));
+    let builds = http::get_json(&format!(
+        "{PAPER_API}/projects/paper/versions/{mc_version}/builds"
+    ))
+    .await?;
+    let build_list = builds
+        .as_array()
+        .ok_or_else(|| format!("Paper {mc_version} için derleme bulunamadı"))?;
+    if build_list.is_empty() {
+        return Err(format!("Paper {mc_version} için derleme bulunamadı"));
+    }
+    let build_entry = if let Some(requested) = build {
+        build_list
+            .iter()
+            .find(|entry| {
+                entry
+                    .get("id")
+                    .map(|value| value.to_string())
+                    .as_deref()
+                    == Some(requested)
+            })
+            .ok_or_else(|| format!("Paper derlemesi bulunamadı: {requested}"))?
+    } else {
+        &build_list[0]
+    };
+    let download = build_entry
+        .get("downloads")
+        .and_then(|downloads| {
+            downloads
+                .get("server:default")
+                .or_else(|| downloads.as_object().and_then(|map| map.values().next()))
+        })
+        .ok_or_else(|| "Paper indirme bilgisi bulunamadı".to_string())?;
+    let url = download
+        .get("url")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Paper indirme bağlantısı bulunamadı".to_string())?;
+    let bytes = http::download_bytes(url)
+        .await
+        .map_err(|err| format!("Paper sunucu dosyası indirilemedi: {err}"))?;
+    fs::write(server_dir.join("server.jar"), bytes)
+        .map_err(|err| format!("Sunucu dosyası yazılamadı: {err}"))?;
+    emit_server_progress(app, json!({ "stage": "done" }));
+    Ok(json!({ "type": "jar", "jarFile": "server.jar" }))
 }
