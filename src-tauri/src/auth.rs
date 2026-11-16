@@ -1,21 +1,25 @@
 use crate::http::{self, now_millis};
 use crate::secrets::SecretBox;
 use crate::store::Store;
+use base64::Engine;
 use serde_json::{json, Value};
-use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter};
-use tauri_plugin_dialog::DialogExt;
+use sha2::{Digest, Sha256};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc};
+use std::time::Duration;
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use uuid::Uuid;
 
 const DEFAULT_CLIENT_ID: &str = "00000000402b5328";
-const LEGACY_DEVICE_CODE_URL: &str = "https://login.live.com/oauth20_connect.srf";
 const LEGACY_TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
 const LEGACY_SCOPE: &str = "service::user.auth.xboxlive.com::MBI_SSL";
-const AZURE_DEVICE_CODE_URL: &str =
-    "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
 const AZURE_TOKEN_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+const AZURE_AUTHORIZE_URL: &str =
+    "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
 const AZURE_SCOPE: &str = "XboxLive.signin offline_access";
-const DEVICE_CODE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
+// Gömülü giriş penceresi için genel istemci (public client) yönlendirme
+// adresi; giriş sonrası tarayıcı buraya döner, kodu navigasyondan yakalarız.
+const NATIVE_REDIRECT: &str = "https://login.microsoftonline.com/common/oauth2/nativeclient";
 
 #[derive(Clone)]
 pub struct MclcAuth {
@@ -46,13 +50,6 @@ impl AuthFlavor {
             "legacy" => Some(Self::Legacy),
             "azure" => Some(Self::Azure),
             _ => None,
-        }
-    }
-
-    fn device_code_url(self) -> &'static str {
-        match self {
-            Self::Legacy => LEGACY_DEVICE_CODE_URL,
-            Self::Azure => AZURE_DEVICE_CODE_URL,
         }
     }
 
@@ -228,97 +225,66 @@ struct McAuthResult {
     uuid: String,
 }
 
-async fn request_device_code(auth: &AuthConfig) -> Result<Value, String> {
-    let mut params = vec![
-        ("client_id", auth.client_id.as_str()),
-        ("scope", auth.flavor.scope()),
-    ];
-    if auth.flavor == AuthFlavor::Legacy {
-        params.push(("response_type", "device_code"));
-    }
-    let response = http::client()
-        .post(auth.flavor.device_code_url())
-        .form(&params)
-        .send()
-        .await
-        .map_err(|err| format!("Microsoft'a bağlanılamadı: {err}"))?;
-    if !response.status().is_success() {
-        let status = response.status().as_u16();
-        let body = response.text().await.unwrap_or_default();
-        return Err(format!(
-            "Microsoft cihaz kodu alınamadı (HTTP {status}): {}",
-            trim_message(&body)
-        ));
-    }
-    response
-        .json()
-        .await
-        .map_err(|err| format!("Microsoft yanıtı ayrıştırılamadı: {err}"))
+/// PKCE (S256) doğrulama çifti üretir: (code_verifier, code_challenge)
+fn pkce_pair() -> (String, String) {
+    use rand::Rng;
+    let mut bytes = [0u8; 32];
+    rand::thread_rng().fill(&mut bytes);
+    let verifier = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes);
+    let digest = Sha256::digest(verifier.as_bytes());
+    let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(digest);
+    (verifier, challenge)
 }
 
-async fn poll_device_token(
+/// Gömülü giriş penceresinden yakalanan yetkilendirme kodunu token çiftine
+/// çevirir: (oauth_access_token, refresh_token)
+async fn exchange_authorization_code(
     auth: &AuthConfig,
-    device_code: &str,
-    interval: u64,
-    expires_in: u64,
-) -> Result<Value, String> {
-    let started = Instant::now();
-    let mut wait = interval.max(1);
-    loop {
-        if started.elapsed() > Duration::from_secs(expires_in.max(30)) {
-            return Err("Microsoft giriş süresi doldu. Lütfen tekrar deneyin.".to_string());
-        }
-        tokio::time::sleep(Duration::from_secs(wait)).await;
-        let grant_type = match auth.flavor {
-            AuthFlavor::Legacy => "device_code",
-            AuthFlavor::Azure => DEVICE_CODE_GRANT,
-        };
-        let response = http::client()
-            .post(auth.flavor.token_url())
-            .form(&[
-                ("grant_type", grant_type),
-                ("client_id", auth.client_id.as_str()),
-                ("device_code", device_code),
-            ])
-            .send()
-            .await
-            .map_err(|err| format!("Token isteği başarısız: {err}"))?;
-        let status = response.status();
-        let body: Value = response
-            .json()
-            .await
-            .map_err(|err| format!("Token yanıtı ayrıştırılamadı: {err}"))?;
-        if status.is_success() {
-            return Ok(body);
-        }
+    code: &str,
+    verifier: &str,
+) -> Result<(String, String), String> {
+    let response = http::client()
+        .post(AZURE_TOKEN_URL)
+        .form(&[
+            ("grant_type", "authorization_code"),
+            ("client_id", auth.client_id.as_str()),
+            ("code", code),
+            ("redirect_uri", NATIVE_REDIRECT),
+            ("code_verifier", verifier),
+            ("scope", AZURE_SCOPE),
+        ])
+        .send()
+        .await
+        .map_err(|err| format!("Microsoft token isteği başarısız: {err}"))?;
+    let status = response.status();
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|err| format!("Token yanıtı ayrıştırılamadı: {err}"))?;
+    if !status.is_success() {
         let error = body
             .get("error")
             .and_then(Value::as_str)
             .unwrap_or("unknown_error");
-        match error {
-            "authorization_pending" => continue,
-            "slow_down" => {
-                wait += 5;
-                continue;
-            }
-            "authorization_declined" => {
-                return Err("Microsoft girişi iptal edildi.".to_string())
-            }
-            "expired_token" => {
-                return Err("Microsoft giriş kodunun süresi doldu.".to_string())
-            }
-            "bad_verification_code" => {
-                return Err("Microsoft doğrulama kodu geçersiz.".to_string())
-            }
-            other => {
-                let description = body
-                    .get("error_description")
-                    .and_then(Value::as_str)
-                    .unwrap_or("");
-                return Err(format!("Microsoft girişi başarısız ({other}): {description}"));
-            }
-        }
+        let description = body
+            .get("error_description")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        return Err(format!(
+            "Microsoft kod değişimi başarısız ({error}): {description}"
+        ));
     }
+    let access_token = body
+        .get("access_token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Microsoft erişim token'ı bulunamadı".to_string())?
+        .to_string();
+    let refresh = body
+        .get("refresh_token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Microsoft yenileme token'ı bulunamadı".to_string())?
+        .to_string();
+    Ok((access_token, refresh))
 }
 
 async fn oauth_refresh(
@@ -570,70 +536,99 @@ pub async fn login_with_microsoft(
     let auth = AuthConfig::from_env();
     notify(app, "info", "Microsoft girişi başlatılıyor...");
 
-    let device = request_device_code(&auth).await?;
-    let device_code = device
-        .get("device_code")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "Microsoft cihaz kodu alınamadı".to_string())?
-        .to_string();
-    let user_code = device
-        .get("user_code")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .to_string();
-    let verification_uri = device
-        .get("verification_uri")
-        .or_else(|| device.get("verification_url"))
-        .and_then(Value::as_str)
-        .unwrap_or("https://www.microsoft.com/link")
-        .to_string();
-    let message = device
-        .get("message")
-        .and_then(Value::as_str)
-        .map(ToString::to_string)
-        .unwrap_or_else(|| {
-            format!("{verification_uri} adresine gidin ve şu kodu girin: {user_code}")
-        });
-    let interval = device.get("interval").and_then(Value::as_u64).unwrap_or(5);
-    let expires_in = device
-        .get("expires_in")
-        .and_then(Value::as_u64)
-        .unwrap_or(900);
+    // Önceki giriş penceresi varsa kapat (çift tıklama vb.)
+    if let Some(existing) = app.get_webview_window("ms-auth") {
+        let _ = existing.close();
+        tokio::time::sleep(Duration::from_millis(400)).await;
+    }
 
-    notify(
-        app,
-        "info",
-        &format!("Tarayıcıda {verification_uri} adresini açın ve şu kodu girin: {user_code}"),
+    let (verifier, challenge) = pkce_pair();
+    let state = Uuid::new_v4().to_string();
+    let authorize_url = format!(
+        "{AZURE_AUTHORIZE_URL}?client_id={client_id}&response_type=code&redirect_uri={redirect}&scope={scope}&code_challenge={challenge}&code_challenge_method=S256&state={state}&prompt=select_account",
+        client_id = auth.client_id,
+        redirect = NATIVE_REDIRECT,
+        scope = "XboxLive.signin%20offline_access",
     );
-    let _ = open::that(&verification_uri);
+    let parsed_url: tauri::Url = authorize_url
+        .parse()
+        .map_err(|err| format!("Giriş adresi oluşturulamadı: {err}"))?;
 
-    let dialog_app = app.clone();
-    let dialog_message = format!(
-        "Microsoft ile giriş yapmak için tarayıcıda şu adrese gidin:\n\n{verification_uri}\n\nKod: {user_code}\n\n{message}"
-    );
-    let _ = tokio::task::spawn_blocking(move || {
-        dialog_app
-            .dialog()
-            .message(dialog_message)
-            .title("Microsoft ile Giriş Yap")
-            .blocking_show();
+    let (tx, rx) = mpsc::channel::<Result<String, String>>();
+    let success = Arc::new(AtomicBool::new(false));
+
+    let nav_tx = tx.clone();
+    let nav_state = state.clone();
+    let window = WebviewWindowBuilder::new(app, "ms-auth", WebviewUrl::External(parsed_url))
+        .title("Microsoft ile Giriş")
+        .inner_size(430.0, 620.0)
+        .min_inner_size(360.0, 480.0)
+        .resizable(true)
+        .center()
+        .on_navigation(move |nav_url| {
+            if !nav_url.as_str().starts_with(NATIVE_REDIRECT) {
+                return true;
+            }
+            let pairs: Vec<(String, String)> = nav_url
+                .query_pairs()
+                .map(|(key, value)| (key.to_string(), value.to_string()))
+                .collect();
+            let state_ok = pairs
+                .iter()
+                .any(|(key, value)| key == "state" && *value == nav_state);
+            if let Some((_, code)) = pairs.iter().find(|(key, _)| key == "code") {
+                if state_ok {
+                    let _ = nav_tx.send(Ok(code.clone()));
+                }
+                return false;
+            }
+            if let Some((_, error)) = pairs.iter().find(|(key, _)| key == "error") {
+                let _ = nav_tx.send(Err(format!(
+                    "Microsoft girişi tamamlanamadı ({error})"
+                )));
+                return false;
+            }
+            true
+        })
+        .build()
+        .map_err(|err| format!("Giriş penceresi açılamadı: {err}"))?;
+
+    let close_tx = tx.clone();
+    let close_flag = success.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::Destroyed = event {
+            if !close_flag.load(Ordering::Relaxed) {
+                let _ = close_tx.send(Err("Giriş penceresi kapatıldı.".to_string()));
+            }
+        }
+    });
+
+    notify(app, "info", "Microsoft giriş penceresi açıldı...");
+    let received = tokio::task::spawn_blocking(move || {
+        rx.recv_timeout(Duration::from_secs(300))
     })
-    .await;
+    .await
+    .map_err(|err| format!("Giriş akışı kesildi: {err}"))?;
 
-    notify(app, "info", "Microsoft giriş onayı bekleniyor...");
-    let token = poll_device_token(&auth, &device_code, interval, expires_in).await?;
-    let oauth_access = token
-        .get("access_token")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "Microsoft erişim token'ı bulunamadı".to_string())?
-        .to_string();
-    let refresh_token = token
-        .get("refresh_token")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "Microsoft yenileme token'ı bulunamadı".to_string())?
-        .to_string();
+    let code = match received {
+        Ok(Ok(code)) => code,
+        Ok(Err(err)) => {
+            let _ = window.close();
+            return Err(err);
+        }
+        Err(_) => {
+            let _ = window.close();
+            return Err(
+                "Microsoft giriş penceresi zaman aşımına uğradı (5 dakika). Lütfen tekrar deneyin."
+                    .to_string(),
+            );
+        }
+    };
+    success.store(true, Ordering::Relaxed);
+    let _ = window.close();
 
     notify(app, "info", "Xbox Live ve Minecraft oturumu doğrulanıyor...");
+    let (oauth_access, refresh_token) = exchange_authorization_code(&auth, &code, &verifier).await?;
     let mc = xbox_minecraft_auth(&oauth_access, auth.flavor).await?;
 
     let mut accounts = store.array("accounts");

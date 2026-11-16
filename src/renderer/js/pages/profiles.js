@@ -40,7 +40,9 @@ window.Pages.profiles = {
     const isRunning = window.runningInstances && window.runningInstances.has(inst.id);
     return `
       <div class="card instance-card" data-id="${inst.id}" style="animation-delay:${Math.min(index * 45, 400)}ms">
-        <div class="instance-card-icon instance-card-icon-grass"></div>
+        ${inst.iconDataUrl
+          ? `<img class="instance-card-icon" src="${inst.iconDataUrl}" alt="" draggable="false" />`
+          : `<div class="instance-card-icon instance-card-icon-grass"></div>`}
         <div class="instance-card-name">${escapeHtml(inst.name)}</div>
         <div class="instance-card-meta">${inst.version} · ${inst.loader}${inst.loaderVersion ? ' ' + inst.loaderVersion : ''}</div>
         <div class="instance-card-meta">${t('profiles.lastPlayed')}: ${lastPlayed} · ${t('profiles.totalPlaytime')}: ${playtime}</div>
@@ -143,6 +145,14 @@ window.Pages.profiles = {
     const isEdit = !!instance;
     return `
       <h2>${isEdit ? t('profiles.edit') : t('profiles.newProfile')}</h2>
+      ${isEdit ? `
+      <div class="field" style="display:flex; align-items:center; gap:14px;">
+        <div class="instance-card-icon profile-icon-preview" id="f-icon-preview"></div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <button class="btn secondary" id="f-icon-choose">${t('profiles.iconChoose')}</button>
+          <button class="btn secondary" id="f-icon-reset" style="display:none;">${t('profiles.iconReset')}</button>
+        </div>
+      </div>` : ''}
       <div class="field">
         <label>${t('profiles.nameLabel')}</label>
         <input type="text" id="f-name" value="${instance ? escapeHtml(instance.name) : ''}" style="width:100%;" />
@@ -187,6 +197,45 @@ window.Pages.profiles = {
     const loaderVersionField = box.querySelector('#loader-version-field');
     const versionSelect = box.querySelector('#f-version');
     const versionTypeSelect = box.querySelector('#f-version-type');
+
+    // Profil ikonu (yalnız düzenleme modunda)
+    if (instance) {
+      const preview = box.querySelector('#f-icon-preview');
+      const resetBtn = box.querySelector('#f-icon-reset');
+      const setPreview = (url) => {
+        if (url) {
+          preview.innerHTML = `<img src="${url}" alt="" draggable="false" />`;
+          if (resetBtn) resetBtn.style.display = '';
+        } else {
+          preview.innerHTML = '';
+          preview.classList.add('instance-card-icon-grass');
+          if (resetBtn) resetBtn.style.display = 'none';
+        }
+      };
+      setPreview(instance.iconDataUrl);
+      box.querySelector('#f-icon-choose').onclick = async () => {
+        try {
+          const result = await window.buran.instances.setIcon(instance.id);
+          if (result) {
+            setPreview(result.iconDataUrl);
+            showToast(t('profiles.iconChanged'), 'success');
+          }
+        } catch (err) {
+          showToast(t('toast.genericError', { error: err.message }), 'error');
+        }
+      };
+      if (resetBtn) {
+        resetBtn.onclick = async () => {
+          try {
+            await window.buran.instances.resetIcon(instance.id);
+            setPreview(null);
+            showToast(t('profiles.iconResetDone'), 'success');
+          } catch (err) {
+            showToast(t('toast.genericError', { error: err.message }), 'error');
+          }
+        };
+      }
+    }
 
     versionTypeSelect.onchange = async () => {
       versionSelect.innerHTML = `<option>${t('common.loading')}</option>`;

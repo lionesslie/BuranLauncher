@@ -433,6 +433,25 @@ input, select, button, textarea { font-family: inherit; }
   background: url('../assets/icons/grass-profile.png') center / cover no-repeat;
   image-rendering: pixelated;
 }
+img.instance-card-icon {
+  object-fit: cover;
+}
+.profile-icon-preview {
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+}
+.profile-icon-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+.page.drop-active {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+  border-radius: var(--radius);
+}
 .instance-card-name {
   font-size: 14.5px;
   font-weight: 650;

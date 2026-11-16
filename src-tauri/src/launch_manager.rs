@@ -902,25 +902,50 @@ pub async fn launch_instance(
     }
 
     let settings = store.settings();
-    let mut java_path = settings
+    let instance_version = instance
+        .get("version")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    // Sürüm uyumlu Java seçimi: Ayarlar'daki Java doğru major sürümdeyse onu
+    // kullan; uyuşmuyorsa doğru sürümü önce launcher cache'inden, sonra
+    // sistemden dene; hiçbiri yoksa otomatik indir (kullanıcı ayarı değişmez).
+    let required_major = java_manager::required_java_version_for_mc(&instance_version);
+    let mut java_path = String::new();
+    let configured = settings
         .get("javaPath")
         .and_then(Value::as_str)
         .unwrap_or("")
         .to_string();
-    if java_path.trim().is_empty() {
-        java_path = java_manager::detect_system_java().unwrap_or_default();
+    if !configured.trim().is_empty() {
+        match java_manager::detect_java_major(std::path::Path::new(&configured)) {
+            Some(major) if major == required_major => java_path = configured.clone(),
+            // Sürümü okunamayan yola yalnız gerçekten varsa güven.
+            None if std::path::Path::new(&configured).exists() => java_path = configured.clone(),
+            _ => {}
+        }
     }
     if java_path.is_empty() {
-        let instance_version = instance
-            .get("version")
-            .and_then(Value::as_str)
-            .unwrap_or("");
+        if let Some(cached) = java_manager::find_cached_java(paths, required_major) {
+            java_path = cached.to_string_lossy().to_string();
+        }
+    }
+    if java_path.is_empty() {
+        if let Some(system) = java_manager::detect_system_java() {
+            match java_manager::detect_java_major(std::path::Path::new(&system)) {
+                Some(major) if major == required_major => java_path = system,
+                None => java_path = system,
+                _ => {}
+            }
+        }
+    }
+    if java_path.is_empty() {
         emit_status(
             app,
             instance_id,
             json!({ "task": "java-auto-download", "instanceVersion": instance_version, "stage": "autoDownloadStart" }),
         );
-        java_path = java_manager::ensure_java_for_version(paths, instance_version, |payload| {
+        java_path = java_manager::ensure_java_for_version(paths, &instance_version, |payload| {
             let mut status = payload;
             status["task"] = json!("java-auto-download");
             status["instanceVersion"] = json!(instance_version);
@@ -930,7 +955,7 @@ pub async fn launch_instance(
         .map(|path| path.to_string_lossy().to_string())
         .map_err(|err| {
             format!(
-                "Java otomatik indirilemedi: {err} — Ayarlar üzerinden manuel bir Java yolu belirtebilirsiniz."
+                "Java otomatik indirilemedi: {err} - Ayarlar üzerinden manuel bir Java yolu belirtebilirsiniz."
             )
         })?;
     }
@@ -938,11 +963,6 @@ pub async fn launch_instance(
     let auth = auth::get_mclc_auth(store, &app.state::<crate::secrets::SecretBox>(), &account_id)
         .await?;
 
-    let instance_version = instance
-        .get("version")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .to_string();
     let loader = instance
         .get("loader")
         .and_then(Value::as_str)

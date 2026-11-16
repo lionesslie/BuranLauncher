@@ -87,7 +87,11 @@
       "old_beta": "Eski Beta",
       "old_alpha": "Eski Alpha"
     },
-    "files": "Dosyalar"
+    "files": "Dosyalar",
+    "iconChoose": "İkon Değiştir",
+    "iconReset": "Varsayılana Dön",
+    "iconChanged": "Profil ikonu güncellendi.",
+    "iconResetDone": "İkon varsayılana döndürüldü."
   },
   "modstore": {
     "title": "Mod Mağazası",
@@ -202,7 +206,8 @@
     "remove": "Kaldır",
     "active": "Aktif",
     "typeOffline": "Çevrimdışı",
-    "typeMicrosoft": "Microsoft"
+    "typeMicrosoft": "Microsoft",
+    "msLoginBusy": "Microsoft girişi açılıyor..."
   },
   "settings": {
     "title": "Ayarlar",
@@ -274,7 +279,10 @@
     "downloadError": "İndirme hatası: {error}",
     "javaDownloaded": "Java başarıyla kuruldu",
     "settingsSaved": "Ayarlar kaydedildi",
-    "genericError": "Bir hata oluştu: {error}"
+    "genericError": "Bir hata oluştu: {error}",
+    "modsImported": "{count} mod dosyası kuruldu.",
+    "worldsImported": "{count} dünya içeri aktarıldı.",
+    "dropNoInstance": "Önce kurulu bir profil seçin."
   },
   "common": {
     "loading": "Yükleniyor...",

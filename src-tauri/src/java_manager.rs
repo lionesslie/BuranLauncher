@@ -60,14 +60,50 @@ pub fn required_java_version_for_mc(mc_version: &str) -> u32 {
         .collect();
     let major = *parts.first().unwrap_or(&1);
     let minor = *parts.get(1).unwrap_or(&0);
-    if major == 1 && minor >= 20 {
+    if major != 1 {
+        // Yeni sürüm şeması (26.x ve sonrası): Java 25 gerekir.
+        25
+    } else if minor >= 20 {
         21
-    } else if major == 1 && minor >= 18 {
+    } else if minor >= 18 {
         17
-    } else if major == 1 && minor >= 17 {
+    } else if minor >= 17 {
         16
     } else {
         8
+    }
+}
+
+/// Java çalıştırılabilirinin gerçek major sürümünü döndürür (`java -version`
+/// çıktısından). Yol klasörse bin/java(.exe)'ye dönülür; sürüm okunamazsa None.
+/// Eski biçim ("1.8.0_392") için ikinci sayı (8) döner.
+pub fn detect_java_major(java_path: &Path) -> Option<u32> {
+    let exe = if java_path.is_file() {
+        java_path.to_path_buf()
+    } else {
+        java_executable(java_path)
+    };
+    if !exe.exists() {
+        return None;
+    }
+    let mut command = Command::new(&exe);
+    command.arg("-version");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    let output = command.output().ok()?;
+    let text = String::from_utf8_lossy(&output.stderr);
+    let start = text.find('"')? + 1;
+    let end = text[start..].find('"')? + start;
+    let version = &text[start..end];
+    let mut numbers = version.split(['.', '_']);
+    let first: u32 = numbers.next()?.parse().ok()?;
+    if first == 1 {
+        numbers.next()?.parse().ok()
+    } else {
+        Some(first)
     }
 }
 

@@ -265,8 +265,27 @@ pub async fn buran_invoke(
             }
         }
 
-        "instances:list" => Ok(instance_manager::list_instances(&store)),
+        "instances:list" => Ok(instance_manager::list_instances(&store, &paths)),
         "instances:create" => instance_manager::create_instance(&store, &paths, &arg(&args, 0)),
+        "instances:setIcon" => {
+            let params = arg(&args, 0);
+            let id = param_string(&params, "id").unwrap_or("");
+            let reset = params.get("reset").and_then(Value::as_bool).unwrap_or(false);
+            let source = if reset {
+                None
+            } else {
+                let Some(file) = app
+                    .dialog()
+                    .file()
+                    .add_filter("Görsel", &["png", "jpg", "jpeg", "webp", "gif"])
+                    .blocking_pick_file()
+                else {
+                    return Ok(Value::Null);
+                };
+                Some(file.into_path().map_err(|err| err.to_string())?)
+            };
+            instance_manager::set_icon(&store, &paths, id, source.as_deref())
+        }
         "instances:update" => {
             let params = arg(&args, 0);
             let id = param_string(&params, "id").unwrap_or("");
@@ -814,6 +833,70 @@ pub async fn buran_invoke(
             };
             let path = file.into_path().map_err(|err| err.to_string())?;
             world_manager::import_world(&paths, &instance_id, &path).map(Value::String)
+        }
+        // Sürükle-bırak: zip'leri dünya olarak içe aktar
+        "worlds:importFiles" => {
+            let params = arg(&args, 0);
+            let instance_id = param_string(&params, "instanceId").unwrap_or("");
+            let files = params
+                .get("paths")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let mut imported = Vec::new();
+            let mut failed = Vec::new();
+            for file in files {
+                let Some(path) = file.as_str().map(std::path::PathBuf::from) else {
+                    continue;
+                };
+                let extension = path
+                    .extension()
+                    .and_then(|value| value.to_str())
+                    .unwrap_or("")
+                    .to_lowercase();
+                if extension != "zip" {
+                    failed.push(format!(
+                        "Zip değil: {}",
+                        path.file_name()
+                            .map(|name| name.to_string_lossy().to_string())
+                            .unwrap_or_default()
+                    ));
+                    continue;
+                }
+                match world_manager::import_world(&paths, &instance_id, &path) {
+                    Ok(name) => imported.push(name),
+                    Err(err) => failed.push(err),
+                }
+            }
+            if imported.is_empty() && !failed.is_empty() {
+                return Err(failed.join("; "));
+            }
+            Ok(json!({ "imported": imported, "failed": failed }))
+        }
+        // Sürükle-bırak: jar/zip modları kurulu profilin mods klasörüne koy
+        "mods:installFiles" => {
+            let params = arg(&args, 0);
+            let instance_id = param_string(&params, "instanceId").unwrap_or("");
+            let files = params
+                .get("paths")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let mut installed = 0u64;
+            let mut failed = Vec::new();
+            for file in files {
+                let Some(path) = file.as_str().map(std::path::PathBuf::from) else {
+                    continue;
+                };
+                match modrinth::install_mod_file(&paths, &store, &instance_id, &path) {
+                    Ok(_) => installed += 1,
+                    Err(err) => failed.push(err),
+                }
+            }
+            if installed == 0 && !failed.is_empty() {
+                return Err(failed.join("; "));
+            }
+            Ok(json!({ "installed": installed, "failed": failed }))
         }
 
         "background:get" => Ok(background::get_background_state(&store, &paths)),

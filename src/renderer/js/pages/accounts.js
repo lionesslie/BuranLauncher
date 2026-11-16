@@ -48,6 +48,10 @@ window.Pages.accounts = {
     });
 
     el.querySelector('#acc-ms').onclick = async () => {
+      const btn = el.querySelector('#acc-ms');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = t('accounts.msLoginBusy');
       try {
         await window.buran.accounts.loginMicrosoft();
         showToast(t('toast.loginSuccess'), 'success');
@@ -57,6 +61,9 @@ window.Pages.accounts = {
         // Asıl hata mesajı gösterilir (önceden jenerik mesaj hatayı gizliyordu)
         showToast(`${t('toast.loginFailed')}: ${err.message}`, 'error', 7000);
         pushLog({ level: 'error', source: 'Hesap', message: `Microsoft girişi: ${err.message}` });
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
       }
     };
 

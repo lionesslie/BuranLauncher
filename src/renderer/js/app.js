@@ -298,10 +298,51 @@ async function bootstrap() {
     }
   }, 30000);
 
+  // --- Sürükle-bırak: Kurulu sayfasına .jar/.zip mod, Dünyalar sayfasına .zip dünya ---
+  installDragDrop();
+
   await updateSidebarAccount();
   await updateStatusBar();
   window.updateStatusState();
   switchPage('home');
+}
+
+// Tauri penceresine bırakılan dosyaları aktif sayfaya göre yönlendirir.
+function installDragDrop() {
+  const api = window.__TAURI__;
+  if (!api || !api.event || typeof api.event.listen !== 'function') return;
+  const activePage = () => document.querySelector('.page.active');
+  api.event.listen('tauri://drag-enter', () => { activePage()?.classList.add('drop-active'); });
+  api.event.listen('tauri://drag-leave', () => { activePage()?.classList.remove('drop-active'); });
+  api.event.listen('tauri://drag-drop', async (event) => {
+    activePage()?.classList.remove('drop-active');
+    const paths = (event.payload && event.payload.paths) || [];
+    if (!paths.length) return;
+    const current = document.querySelector('.sidebar-nav li.active')?.getAttribute('data-page');
+    try {
+      if (current === 'installedmods') {
+        const instanceId = window.Pages.installedmods.selectedInstanceId;
+        if (!instanceId) {
+          showToast(t('toast.dropNoInstance'), 'error');
+          return;
+        }
+        const result = await window.buran.mods.installFiles(instanceId, paths);
+        showToast(t('toast.modsImported', { count: result.installed }), 'success');
+        window.Pages.installedmods.render();
+      } else if (current === 'worlds') {
+        const instanceId = window.Pages.worlds.selectedInstanceId;
+        if (!instanceId) {
+          showToast(t('toast.dropNoInstance'), 'error');
+          return;
+        }
+        const result = await window.buran.worlds.importFiles(instanceId, paths);
+        showToast(t('toast.worldsImported', { count: result.imported.length }), 'success');
+        window.Pages.worlds.render();
+      }
+    } catch (err) {
+      showToast(t('toast.genericError', { error: err.message }), 'error');
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', bootstrap);

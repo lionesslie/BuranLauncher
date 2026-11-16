@@ -77,7 +77,9 @@
       delete: function (id) { return invoke('instances:delete', id); },
       export: function (id) { return invoke('instances:export', id); },
       import: function () { return invoke('instances:import'); },
-      openFolder: function (id) { return invoke('instances:openFolder', id); }
+      openFolder: function (id) { return invoke('instances:openFolder', id); },
+      setIcon: function (id) { return invoke('instances:setIcon', { id: id }); },
+      resetIcon: function (id) { return invoke('instances:setIcon', { id: id, reset: true }); }
     },
     launch: {
       start: function (instanceId) { return invoke('launch:start', instanceId); },
@@ -123,6 +125,11 @@
       installModpackFile: function () { return invoke('modrinth:installModpackFile'); },
       onProgress: function (callback) { on('modrinth:progress', callback); },
       onModpackProgress: function (callback) { on('modpack:progress', callback); }
+    },
+    mods: {
+      installFiles: function (instanceId, paths) {
+        return invoke('mods:installFiles', { instanceId: instanceId, paths: paths });
+      }
     },
     java: {
       detect: function () { return invoke('java:detect'); },
@@ -185,7 +192,10 @@
       backup: function (instanceId, folderName) {
         return invoke('worlds:backup', { instanceId: instanceId, folderName: folderName });
       },
-      import: function (instanceId) { return invoke('worlds:import', instanceId); }
+      import: function (instanceId) { return invoke('worlds:import', instanceId); },
+      importFiles: function (instanceId, paths) {
+        return invoke('worlds:importFiles', { instanceId: instanceId, paths: paths });
+      }
     },
     background: {
       get: function () { return invoke('background:get'); },

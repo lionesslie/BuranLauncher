@@ -1,6 +1,7 @@
 use crate::http::now_millis;
 use crate::paths::AppPaths;
 use crate::store::Store;
+use base64::Engine;
 use serde_json::{json, Value};
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -9,10 +10,45 @@ use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
+const ICON_FILES: [(&str, &str); 5] = [
+    ("icon.png", "image/png"),
+    ("icon.jpg", "image/jpeg"),
+    ("icon.jpeg", "image/jpeg"),
+    ("icon.webp", "image/webp"),
+    ("icon.gif", "image/gif"),
+];
 
+fn icon_data_url(instance_dir: &Path) -> Option<String> {
+    for (name, mime) in ICON_FILES {
+        let bytes = fs::read(instance_dir.join(name)).ok()?;
+        return Some(format!(
+            "data:{mime};base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        ));
+    }
+    None
+}
 
-pub fn list_instances(store: &Store) -> Value {
-    Value::Array(store.array("instances"))
+pub fn list_instances(store: &Store, paths: &AppPaths) -> Value {
+    let items: Vec<Value> = store
+        .array("instances")
+        .into_iter()
+        .map(|mut item| {
+            let is_custom = item.get("icon").and_then(Value::as_str) == Some("custom");
+            if is_custom {
+                let id = item
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                if let Some(url) = icon_data_url(&paths.instance_dir(&id)) {
+                    item["iconDataUrl"] = Value::String(url);
+                }
+            }
+            item
+        })
+        .collect();
+    Value::Array(items)
 }
 
 pub fn get_instance(store: &Store, id: &str) -> Result<Value, String> {
@@ -115,6 +151,51 @@ pub fn duplicate_instance(
     let destination = paths.instance_dir(&copy_id);
     copy_dir_recursive(&source, &destination)?;
     Ok(copy)
+}
+
+/// Profil ikonunu değiştirir: Some(yol) -> görseli instance klasörüne kopyalar
+/// (icon="custom"), None -> ikon dosyalarını silip çim bloğa döner.
+pub fn set_icon(
+    store: &Store,
+    paths: &AppPaths,
+    id: &str,
+    source: Option<&Path>,
+) -> Result<Value, String> {
+    let dir = paths.instance_dir(id);
+    if !dir.exists() {
+        return Err(format!("Profil bulunamadı: {id}"));
+    }
+    for (name, _) in ICON_FILES {
+        let _ = fs::remove_file(dir.join(name));
+    }
+    let mut icon_value = "grass".to_string();
+    if let Some(source) = source {
+        let extension = source
+            .extension()
+            .and_then(|value| value.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        if !matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "gif") {
+            return Err("Desteklenmeyen görsel formatı (png/jpg/webp/gif)".to_string());
+        }
+        let destination = dir.join(format!("icon.{extension}"));
+        fs::copy(source, &destination)
+            .map_err(|err| format!("İkon kopyalanamadı: {err}"))?;
+        icon_value = "custom".to_string();
+    }
+    let value = icon_value.clone();
+    store.map_array("instances", |instances| {
+        if let Some(instance) = instances
+            .iter_mut()
+            .find(|item| item.get("id").and_then(Value::as_str) == Some(id))
+        {
+            instance["icon"] = Value::String(value.clone());
+        }
+    });
+    Ok(json!({
+        "icon": icon_value,
+        "iconDataUrl": icon_data_url(&dir)
+    }))
 }
 
 pub fn delete_instance(store: &Store, paths: &AppPaths, id: &str) -> Result<(), String> {

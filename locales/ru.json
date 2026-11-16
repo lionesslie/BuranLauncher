@@ -87,7 +87,11 @@
       "old_beta": "Старая бета",
       "old_alpha": "Старая альфа"
     },
-    "files": "Файлы"
+    "files": "Файлы",
+    "iconChoose": "Сменить значок",
+    "iconReset": "Сбросить",
+    "iconChanged": "Значок профиля обновлён.",
+    "iconResetDone": "Значок сброшен по умолчанию."
   },
   "modstore": {
     "title": "Магазин модов",
@@ -202,7 +206,8 @@
     "remove": "Удалить",
     "active": "Активен",
     "typeOffline": "Офлайн",
-    "typeMicrosoft": "Microsoft"
+    "typeMicrosoft": "Microsoft",
+    "msLoginBusy": "Открывается вход Microsoft..."
   },
   "settings": {
     "title": "Настройки",
@@ -274,7 +279,10 @@
     "downloadError": "Ошибка загрузки: {error}",
     "javaDownloaded": "Java успешно установлена",
     "settingsSaved": "Настройки сохранены",
-    "genericError": "Произошла ошибка: {error}"
+    "genericError": "Произошла ошибка: {error}",
+    "modsImported": "Установлено файлов модов: {count}.",
+    "worldsImported": "Импортировано миров: {count}.",
+    "dropNoInstance": "Сначала выберите установленный профиль."
   },
   "common": {
     "loading": "Загрузка...",

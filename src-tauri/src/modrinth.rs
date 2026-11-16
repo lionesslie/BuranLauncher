@@ -297,6 +297,64 @@ where
     Ok(true)
 }
 
+/// Sürükle-bırak / yerel dosyadan mod kurulumu: dosyayı mods klasörüne
+/// kopyalar, ad/versiyonu jar içinden okur ve meta'ya işler (Modrinth olmayan
+/// modlar için).
+pub fn install_mod_file(
+    paths: &AppPaths,
+    store: &Store,
+    instance_id: &str,
+    source: &Path,
+) -> Result<Value, String> {
+    instance_manager::get_instance(store, instance_id)?;
+    let extension = source
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if !matches!(extension.as_str(), "jar" | "zip" | "litemod") {
+        return Err(format!(
+            "Mod dosyası değil: {}",
+            source
+                .file_name()
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_default()
+        ));
+    }
+    let mods_dir = paths.instance_dir(instance_id).join("mods");
+    fs::create_dir_all(&mods_dir).map_err(|err| format!("Klasör oluşturulamadı: {err}"))?;
+    let filename = source
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .ok_or_else(|| "Geçersiz dosya yolu".to_string())?;
+    let destination = mods_dir.join(&filename);
+    fs::copy(source, &destination).map_err(|err| format!("Mod kopyalanamadı: {err}"))?;
+    let (jar_title, jar_version) = read_jar_metadata(&destination);
+    let fallback_title = filename
+        .trim_end_matches(".jar")
+        .trim_end_matches(".zip")
+        .to_string();
+    let title = jar_title.unwrap_or(fallback_title);
+    let mut meta = load_meta(paths, instance_id, "mod");
+    meta.insert(
+        filename.clone(),
+        json!({
+            "projectId": Value::Null,
+            "title": title,
+            "filename": filename,
+            "versionNumber": jar_version.as_ref().map(|value| Value::String(value.clone())).unwrap_or(Value::Null),
+            "installedAt": http::now_millis()
+        }),
+    );
+    save_meta(paths, instance_id, "mod", &meta);
+    crate::logger::info(&format!("Mod dosyadan kuruldu: {filename} (instance {instance_id})"));
+    Ok(json!({
+        "filename": filename,
+        "title": title,
+        "versionNumber": jar_version.map(Value::String).unwrap_or(Value::Null)
+    }))
+}
+
 pub async fn install_content_to_instance<F>(
     paths: &AppPaths,
     store: &Store,
