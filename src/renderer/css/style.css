@@ -30,23 +30,23 @@
 }
 
 :root {
-  --bg: #111315;
-  --bg-sidebar: #17191C;
-  --bg-raise: #202428;
-  --bg-raise-2: #262A2E;
-  --bg-hover: #2C3136;
-  --border: #24282B;
-  --border-strong: #30363A;
-  --text-hi: #F1F3F5;
-  --text-mid: #C3C8CD;
-  --text-low: #9D999F;
-  --accent: #78D64B;
-  --accent-bright: #91E66A;
-  --accent-dark: #5CB636;
-  --accent-dim: #2A3D2A;
-  --accent-soft: #1F2E18;
-  --on-accent: #0C2508;
-  --green-text: #91E66A;
+  --bg: #101112;
+  --bg-sidebar: #141516;
+  --bg-raise: #191B1D;
+  --bg-raise-2: #1E2022;
+  --bg-hover: #252729;
+  --border: #232629;
+  --border-strong: #2C2F32;
+  --text-hi: #E8E8E8;
+  --text-mid: #999DA1;
+  --text-low: #62666A;
+  --accent: #C4C8CC;
+  --accent-bright: #DCDEE0;
+  --accent-dark: #A8ADB2;
+  --accent-dim: #303336;
+  --accent-soft: #24272A;
+  --on-accent: #101112;
+  --green-text: #C4C8CC;
   --danger: #E05560;
   --danger-dim: #3A2426;
   --warn: #E8A13C;
@@ -140,7 +140,6 @@ input, select, button, textarea { font-family: inherit; }
 .logo-block {
   width: 42px;
   height: 42px;
-  image-rendering: pixelated;
   border-radius: var(--radius);
 }
 .logo-text { display: flex; flex-direction: column; min-width: 0; }
@@ -296,7 +295,7 @@ input, select, button, textarea { font-family: inherit; }
   overflow-x: hidden;
   padding: 22px 26px 30px;
   /* İçerik alanı gövdeden bir tık açık; boş/kalınan anlarda "siyah" görünmesin */
-  background: #14171A;
+  background: #0B0C0D;
   /* Üst kenarları yumuşak; gösterişli değil, ince bir geçiş */
   border-radius: 18px 18px 0 0;
   /* Kaydırma çubuğu çıksa da gitsin de sağ taraf kaymasın/yanıp sönmesin */
@@ -487,7 +486,7 @@ input::placeholder { color: var(--text-low); }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(120, 214, 75, .18);
+  box-shadow: 0 0 0 3px rgba(196, 200, 204, .18);
 }
 select {
   cursor: pointer;
@@ -556,7 +555,7 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
 }
 .type-switch-btn.active {
   background: var(--accent-soft);
-  border-color: rgba(120, 214, 75, .35);
+  border-color: rgba(196, 200, 204, .35);
   color: var(--green-text);
 }
 
@@ -613,7 +612,7 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
   text-transform: uppercase;
 }
 .badge.success {
-  border-color: rgba(120, 214, 75, .4);
+  border-color: rgba(196, 200, 204, .4);
   background: var(--accent-soft);
   color: var(--green-text);
 }
@@ -719,7 +718,7 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
 }
 .log-filter-btn.active {
   background: var(--accent-soft);
-  border-color: rgba(120, 214, 75, .35);
+  border-color: rgba(196, 200, 204, .35);
   color: var(--green-text);
 }
 .log-search {
@@ -1099,12 +1098,42 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
 /* ============ Home: alt kartlar ============ */
 .home-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
   gap: 16px;
   margin-top: 16px;
   align-items: start;
 }
 .home-card { padding: 16px; }
+
+/* Ana sayfa kaymaz: yalnızca sürüm ve haber listeleri kendi içinde kayar */
+#page-home.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+#page-home .home-grid {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+#page-home .home-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+#page-home #home-versions {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+#page-home #home-versions::-webkit-scrollbar { width: 6px; }
+#page-home #home-versions::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 .home-card-head {
   display: flex;
   align-items: center;
@@ -1145,8 +1174,8 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
 .version-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-raise-2);
@@ -1165,6 +1194,7 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
   image-rendering: pixelated;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
+  object-fit: cover;
 }
 .version-row .vr-info { flex: 1; min-width: 0; }
 .version-row .vr-name {
@@ -1179,16 +1209,19 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
   font-size: 11.5px;
   color: var(--text-low);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.version-row .vr-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.version-row .vr-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .badge-selected {
   display: inline-flex;
   align-items: center;
-  padding: 5px 12px;
+  padding: 4px 9px;
   border-radius: var(--radius-sm);
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
 }
 .icon-btn {
@@ -1208,7 +1241,7 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
 .icon-btn .icon { width: 16px; height: 16px; }
 .icon-btn .icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 2; }
 .icon-btn.accent { color: var(--green-text); }
-.icon-btn.accent:hover { background: var(--accent-soft); border-color: rgba(120, 214, 75, .4); }
+.icon-btn.accent:hover { background: var(--accent-soft); border-color: rgba(196, 200, 204, .4); }
 .icon-btn .icon-fill svg { fill: currentColor; stroke: none; }
 
 .version-row-create {
@@ -1306,7 +1339,8 @@ input[type=checkbox]:checked::after { transform: translateX(18px); background: #
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 430px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-width: thin;

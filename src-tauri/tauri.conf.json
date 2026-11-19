@@ -15,7 +15,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "appimage", "deb"],
+    "targets": [
+      "nsis",
+      "appimage",
+      "deb"
+    ],
     "category": "Game",
     "shortDescription": "Buran Launcher - Minecraft başlatıcı",
     "longDescription": "Buran Launcher - Minecraft başlatıcı",
@@ -32,7 +36,12 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["Turkish", "Russian", "English"]
+        "languages": [
+          "Turkish",
+          "Russian",
+          "English"
+        ],
+        "installerIcon": "icons/icon.ico"
       }
     },
     "linux": {

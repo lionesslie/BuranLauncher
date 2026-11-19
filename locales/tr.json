@@ -34,7 +34,11 @@
     "newsSnapshot": "Snapshot",
     "newsRelease": "Sürüm",
     "newsEmpty": "Şimdilik haber yok",
-    "newsError": "Haberler yüklenemedi"
+    "newsError": "Haberler yüklenemedi",
+    "lastPlayedNow": "Az önce",
+    "lastPlayedMinutes": "{n} dk önce",
+    "lastPlayedHours": "{n} sa önce",
+    "lastPlayedDays": "{n} gün önce"
   },
   "news": {
     "fallback": "Şu anda gösterilecek haber yok. Güncellemeler için Ayarlar > Güncellemeler bölümüne bakabilirsin."
@@ -282,7 +286,8 @@
     "genericError": "Bir hata oluştu: {error}",
     "modsImported": "{count} mod dosyası kuruldu.",
     "worldsImported": "{count} dünya içeri aktarıldı.",
-    "dropNoInstance": "Önce kurulu bir profil seçin."
+    "dropNoInstance": "Önce kurulu bir profil seçin.",
+    "javaAlreadyInstalled": "Java {major} zaten kurulu — doğrudan seçildi."
   },
   "common": {
     "loading": "Yükleniyor...",

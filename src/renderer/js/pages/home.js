@@ -100,9 +100,9 @@ window.Pages.home = {
     if (selected) {
       const versionChip = el.querySelector('#hero-version');
       const menu = el.querySelector('#hero-version-menu');
-      menu.innerHTML = instances.map(inst => `
+      menu.innerHTML = [...instances].sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0)).map(inst => `
         <div class="hero-version-menu-item ${inst.id === selected.id ? 'selected' : ''}" data-id="${inst.id}">
-          <img src="assets/icons/grass-profile.png" alt="" draggable="false" />
+          ${instanceIcon(inst)}
           <span class="vm-name">${escapeHtml(inst.name)}</span>
           <span class="vm-check" data-icon="check-circle"></span>
         </div>
@@ -135,19 +135,21 @@ window.Pages.home = {
         setTimeout(() => window.Pages.profiles.openCreateModal(), 150);
       };
     } else {
-      const recent = [...instances].sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0)).slice(0, 4);
-      versionsEl.innerHTML = recent.map(inst => {
+      const sorted = [...instances].sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0));
+      versionsEl.innerHTML = sorted.map(inst => {
         const isSelected = selected && inst.id === selected.id;
         const running = window.runningInstances && window.runningInstances.has(inst.id);
+        const played = relativePlayed(inst);
+        const metaParts = [escapeHtml(inst.version), escapeHtml(loaderLabel(inst.loader))];
+        if (played) metaParts.push(played);
         return `
-        <div class="version-row ${isSelected ? 'selected' : ''}" data-id="${inst.id}">
-          <img src="assets/icons/grass-profile.png" alt="" draggable="false" />
+        <div class="version-row ${isSelected ? 'selected' : ''}" data-id="${inst.id}" title="${escapeHtml(inst.name)}">
+          ${instanceIcon(inst)}
           <div class="vr-info">
             <div class="vr-name">${escapeHtml(inst.name)}</div>
-            <div class="vr-meta">${escapeHtml(inst.version)} &bull; ${escapeHtml(loaderLabel(inst.loader))}</div>
+            <div class="vr-meta">${metaParts.join(' &bull; ')}</div>
           </div>
           <div class="vr-actions">
-            ${isSelected ? `<span class="badge-selected">${t('home.selected')}</span>` : ''}
             <button class="icon-btn accent" data-play="${inst.id}" title="${running ? t('profiles.stop') : t('home.quickPlay')}">
               <span class="icon" data-icon="${running ? 'x' : 'play'}"></span>
             </button>
@@ -226,8 +228,34 @@ window.Pages.home = {
 };
 
 function loaderLabel(loader) {
+  const labels = {
+    vanilla: 'Vanilla',
+    fabric: 'Fabric',
+    quilt: 'Quilt',
+    forge: 'Forge',
+    neoforge: 'NeoForge'
+  };
   if (!loader) return 'Vanilla';
-  return loader.charAt(0).toUpperCase() + loader.slice(1);
+  return labels[loader] || loader.charAt(0).toUpperCase() + loader.slice(1);
+}
+
+function instanceIcon(inst) {
+  if (inst && inst.iconDataUrl) {
+    return `<img src="${escapeHtml(inst.iconDataUrl)}" alt="" draggable="false" />`;
+  }
+  return `<img src="assets/icons/grass-profile.png" alt="" draggable="false" />`;
+}
+
+function relativePlayed(inst) {
+  const ts = inst && inst.lastPlayed ? inst.lastPlayed : 0;
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  if (diff < 60000) return t('home.lastPlayedNow');
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return t('home.lastPlayedMinutes', { n: minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t('home.lastPlayedHours', { n: hours });
+  return t('home.lastPlayedDays', { n: Math.floor(hours / 24) });
 }
 
 function escapeHtml(str) {

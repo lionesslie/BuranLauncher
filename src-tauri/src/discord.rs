@@ -7,9 +7,29 @@ use tauri::{AppHandle, Emitter, Manager};
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 static CLIENT: OnceLock<Mutex<Option<DiscordIpcClient>>> = OnceLock::new();
+static PRESENCE: OnceLock<Mutex<Option<PresenceBase>>> = OnceLock::new();
 
 fn client_slot() -> &'static Mutex<Option<DiscordIpcClient>> {
     CLIENT.get_or_init(|| Mutex::new(None))
+}
+
+fn presence_slot() -> &'static Mutex<Option<PresenceBase>> {
+    PRESENCE.get_or_init(|| Mutex::new(None))
+}
+
+#[derive(Clone)]
+struct PresenceBase {
+    instance_name: String,
+    mc_version: String,
+    loader: String,
+    connection: Connection,
+}
+
+#[derive(Clone, PartialEq)]
+enum Connection {
+    Menu,
+    Singleplayer,
+    Server(String),
 }
 
 fn notify(level: &str, message: &str) {
@@ -101,13 +121,26 @@ fn loader_label(loader: &str) -> Option<&'static str> {
     }
 }
 
-pub fn set_playing(instance_name: &str, mc_version: &str, loader: &str) {
-    let Some(app) = APP_HANDLE.get() else {
+fn connection_label(conn: &Connection, lang: &str) -> String {
+    let (menu, single, server_prefix) = match lang {
+        "ru" => ("В меню", "Одиночная игра", "Сервер: "),
+        _ => ("Menüde", "Tek oyunculu", "Sunucu: "),
+    };
+    match conn {
+        Connection::Menu => menu.to_string(),
+        Connection::Singleplayer => single.to_string(),
+        Connection::Server(host) => format!("{server_prefix}{host}"),
+    }
+}
+
+fn push_activity(app: &AppHandle) {
+    let base = {
+        let guard = presence_slot().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        guard.clone()
+    };
+    let Some(base) = base else {
         return;
     };
-    if !is_enabled(app) {
-        return;
-    }
     if client_slot()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -115,32 +148,31 @@ pub fn set_playing(instance_name: &str, mc_version: &str, loader: &str) {
     {
         connect();
     }
-    let loader_text = loader_label(loader);
-    let details = format!("{instance_name} oynuyor");
-    let mut activity = Activity::new()
-        .details(&details)
-        .assets(Assets::new().large_image("buran_logo").large_text("Buran Launcher"))
-        .timestamps(Timestamps::new().start(chrono::Utc::now().timestamp()));
-    let state = if loader_text.is_some() {
-        format!("Minecraft {mc_version} · {}", loader_text.unwrap_or_default())
-    } else {
-        format!("Minecraft {mc_version}")
+    let store = app.state::<Store>();
+    let lang = crate::i18n::current_lang(&store);
+    let loader_text = loader_label(&base.loader);
+    let details = match loader_text {
+        Some(loader) => format!("{loader} • Minecraft {}", base.mc_version),
+        None => format!("Minecraft {}", base.mc_version),
     };
-    activity = activity.state(&state);
-    if let Some(loader_text) = loader_text {
-        activity = activity.assets(
-            Assets::new()
-                .large_image("buran_logo")
-                .large_text("Buran Launcher")
-                .small_image(loader)
-                .small_text(loader_text),
-        );
+    let large_text = format!("{} — Buran Launcher", base.instance_name);
+    let state = connection_label(&base.connection, &lang);
+    let mut assets = Assets::new()
+        .large_image("buran_logo")
+        .large_text(&large_text);
+    if let Some(loader) = loader_text {
+        assets = assets.small_image(&base.loader).small_text(loader);
     }
-
+    let activity = Activity::new()
+        .details(&details)
+        .state(&state)
+        .assets(assets)
+        .timestamps(Timestamps::new().start(chrono::Utc::now().timestamp()));
+    let summary = format!("{} ({}, {})", base.instance_name, base.mc_version, state);
     let mut slot = client_slot().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     if let Some(client) = slot.as_mut() {
         match client.set_activity(activity) {
-            Ok(()) => notify("info", &format!("Durum güncellendi: \"{instance_name} oynuyor\"")),
+            Ok(()) => notify("info", &format!("Durum güncellendi: {summary}")),
             Err(err) => {
                 notify("error", &format!("Durum güncellenemedi: {err}"));
                 let _ = client.close();
@@ -152,7 +184,75 @@ pub fn set_playing(instance_name: &str, mc_version: &str, loader: &str) {
     }
 }
 
+pub fn set_playing(instance_name: &str, mc_version: &str, loader: &str) {
+    let Some(app) = APP_HANDLE.get() else {
+        return;
+    };
+    if !is_enabled(app) {
+        return;
+    }
+    {
+        let mut guard = presence_slot().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        *guard = Some(PresenceBase {
+            instance_name: instance_name.to_string(),
+            mc_version: mc_version.to_string(),
+            loader: loader.to_string(),
+            connection: Connection::Menu,
+        });
+    }
+    push_activity(app);
+}
+
+/// Oyun çıktısındaki bağlantı satırlarını izleyip Discord durumunu günceller.
+/// Sunucuya bağlanınca sunucu adı, tek oyunculu dünyaya girince "Tek oyunculu",
+/// menüye dönünce "Menüde" gösterilir.
+pub fn handle_game_log(line: &str) {
+    let Some(marker) = line.find("]: ") else {
+        return;
+    };
+    let message = &line[marker + 3..];
+    let next = if let Some(rest) = message.strip_prefix("Connecting to ") {
+        let host = rest.split(',').next().unwrap_or(rest).trim();
+        if host.is_empty() {
+            return;
+        }
+        Connection::Server(host.chars().take(64).collect())
+    } else if message.contains("Starting integrated minecraft server version") {
+        Connection::Singleplayer
+    } else if message.contains("Disconnected from server")
+        || message.contains("Connection lost")
+        || message.contains("Stopping integrated server")
+    {
+        Connection::Menu
+    } else {
+        return;
+    };
+
+    let changed = {
+        let mut guard = presence_slot().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        match guard.as_mut() {
+            Some(base) if base.connection != next => {
+                base.connection = next;
+                true
+            }
+            _ => false,
+        }
+    };
+    if changed {
+        if let Some(app) = APP_HANDLE.get() {
+            push_activity(app);
+        }
+    }
+}
+
 pub fn clear_activity() {
+    let had_state = {
+        let mut guard = presence_slot().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        guard.take().is_some()
+    };
+    if !had_state {
+        return;
+    }
     let mut slot = client_slot().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let Some(client) = slot.as_mut() else {
         return;

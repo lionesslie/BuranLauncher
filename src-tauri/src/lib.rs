@@ -36,14 +36,18 @@ pub fn run() {
         }
     }
 
-    let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+    let mut builder = tauri::Builder::default();
+    // Geliştirme/otomasyon testlerinde kurulu sürümle çakışmaması için tek örnek kilidi atlanabilir.
+    if std::env::var("BURAN_DEV_INSTANCE").ok().as_deref() != Some("1") {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.unminimize();
                 let _ = window.set_focus();
             }
-        }))
+        }));
+    }
+    let builder = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -78,8 +82,8 @@ pub fn run() {
             // siyah/parlak bir zemin basar; arayüz rengiyle eşitleyerek siyah
             // parlamayı önlüyoruz (--bg: #111315).
             .background_color(tauri::window::Color(0x11, 0x13, 0x15, 0xff))
-            .inner_size(1280.0, 800.0)
-            .min_inner_size(960.0, 600.0)
+            .inner_size(1380.0, 800.0)
+            .min_inner_size(1380.0, 800.0)
             .resizable(true)
             .decorations(false)
             .visible(false)

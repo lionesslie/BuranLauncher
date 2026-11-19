@@ -1096,6 +1096,7 @@ pub async fn launch_instance(
             let mut lines = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = lines.next_line().await {
                 emit_log(&app_for_output, &instance_for_output, &line);
+                crate::discord::handle_game_log(&line);
             }
         });
     }

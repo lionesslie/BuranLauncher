@@ -638,9 +638,16 @@ pub async fn buran_invoke(
         }
         "java:download" => {
             let major = arg(&args, 0).as_u64().unwrap_or(21) as u32;
-            let java_path = java_manager::download_and_install_java(&app, &paths, major).await?;
+            let cached = java_manager::find_cached_java(&paths, major);
+            let (java_path, was_cached) = match cached {
+                Some(path) => (path.to_string_lossy().to_string(), true),
+                None => (
+                    java_manager::download_and_install_java(&app, &paths, major).await?,
+                    false,
+                ),
+            };
             store.update_settings(&json!({ "javaPath": java_path }));
-            Ok(Value::String(java_path))
+            Ok(json!({ "path": java_path, "cached": was_cached }))
         }
 
         "app:status" => Ok(json!({

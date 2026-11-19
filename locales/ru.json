@@ -34,7 +34,11 @@
     "newsSnapshot": "Снапшот",
     "newsRelease": "Релиз",
     "newsEmpty": "Пока нет новостей",
-    "newsError": "Не удалось загрузить новости"
+    "newsError": "Не удалось загрузить новости",
+    "lastPlayedNow": "Только что",
+    "lastPlayedMinutes": "{n} мин назад",
+    "lastPlayedHours": "{n} ч назад",
+    "lastPlayedDays": "{n} дн. назад"
   },
   "news": {
     "fallback": "Сейчас новостей нет. Обновления смотрите в Настройки > Обновления."
@@ -282,7 +286,8 @@
     "genericError": "Произошла ошибка: {error}",
     "modsImported": "Установлено файлов модов: {count}.",
     "worldsImported": "Импортировано миров: {count}.",
-    "dropNoInstance": "Сначала выберите установленный профиль."
+    "dropNoInstance": "Сначала выберите установленный профиль.",
+    "javaAlreadyInstalled": "Java {major} уже установлена — выбрана напрямую."
   },
   "common": {
     "loading": "Загрузка...",

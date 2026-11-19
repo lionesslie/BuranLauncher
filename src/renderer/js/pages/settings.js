@@ -168,9 +168,10 @@ window.Pages.settings = {
         btn.disabled = true;
         try {
           showToast(t('common.loading'));
-          const javaPath = await window.buran.java.download(majorVersion);
+          const result = await window.buran.java.download(majorVersion);
+          const javaPath = typeof result === 'string' ? result : result.path;
           el.querySelector('#s-java-path').value = javaPath;
-          showToast(t('toast.javaDownloaded'), 'success');
+          showToast(result && result.cached ? t('toast.javaAlreadyInstalled', { major: majorVersion }) : t('toast.javaDownloaded'), 'success');
         } catch (err) {
           showToast(t('toast.genericError', { error: err.message }), 'error');
         } finally {
